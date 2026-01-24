@@ -46,6 +46,9 @@ readonly class Invoice
         public ?DateTimeImmutable $validatedAt = null,
         public ?DateTimeImmutable $transmittedAt = null,
         public ?DateTimeImmutable $completedAt = null,
+        public ?DateTimeImmutable $paidAt = null,
+        public ?string $paymentReference = null,
+        public ?string $paymentNote = null,
     ) {}
 
     /**
@@ -86,6 +89,9 @@ readonly class Invoice
             validatedAt: isset($data['validated_at']) ? new DateTimeImmutable($data['validated_at']) : null,
             transmittedAt: isset($data['transmitted_at']) ? new DateTimeImmutable($data['transmitted_at']) : null,
             completedAt: isset($data['completed_at']) ? new DateTimeImmutable($data['completed_at']) : null,
+            paidAt: isset($data['paid_at']) ? new DateTimeImmutable($data['paid_at']) : null,
+            paymentReference: $data['payment_reference'] ?? null,
+            paymentNote: $data['payment_note'] ?? null,
         );
     }
 
@@ -111,5 +117,21 @@ readonly class Invoice
     public function isFinal(): bool
     {
         return $this->status->isFinal();
+    }
+
+    /**
+     * Verifie si la facture a ete payee.
+     */
+    public function isPaid(): bool
+    {
+        return $this->status === InvoiceStatus::Paid || $this->paidAt !== null;
+    }
+
+    /**
+     * Verifie si la facture est une facture entrante (fournisseur).
+     */
+    public function isIncoming(): bool
+    {
+        return $this->direction === Direction::Incoming;
     }
 }

@@ -125,6 +125,22 @@ class HttpClient
     }
 
     /**
+     * Effectue une requete GET et retourne le contenu brut (binaire).
+     *
+     * Utile pour telecharger des fichiers (PDF, XML, etc.)
+     *
+     * @param array<string, mixed> $query
+     * @return string Contenu binaire du fichier
+     * @throws ScellException
+     */
+    public function getRaw(string $path, array $query = []): string
+    {
+        return $this->requestRaw('GET', $path, [
+            RequestOptions::QUERY => $query,
+        ]);
+    }
+
+    /**
      * Effectue une requete HTTP.
      *
      * @param array<string, mixed> $options
@@ -153,6 +169,39 @@ class HttpClient
     }
 
     /**
+     * Effectue une requete HTTP et retourne le contenu brut.
+     *
+     * @param array<string, mixed> $options
+     * @return string
+     * @throws ScellException
+     */
+    private function requestRaw(string $method, string $path, array $options = []): string
+    {
+        $url = $this->baseUrl . '/' . ltrim($path, '/');
+
+        $headers = $this->getDefaultHeaders();
+        // Pour les requetes raw, on accepte n'importe quel type de contenu
+        $headers['Accept'] = '*/*';
+        unset($headers['Content-Type']);
+
+        $options[RequestOptions::HEADERS] = array_merge(
+            $options[RequestOptions::HEADERS] ?? [],
+            $headers
+        );
+
+        try {
+            $response = $this->client->request($method, $url, $options);
+            return $this->handleRawResponse($response);
+        } catch (\GuzzleHttp\Exception\GuzzleException $e) {
+            throw new ScellException(
+                'Erreur de connexion: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
+            );
+        }
+    }
+
+    /**
      * Retourne les headers par defaut.
      *
      * @return array<string, string>
@@ -162,7 +211,7 @@ class HttpClient
         $headers = [
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
-            'User-Agent' => 'Scell-PHP-SDK/1.0.0',
+            'User-Agent' => 'Scell-PHP-SDK/1.2.0',
         ];
 
         if ($this->bearerToken) {
@@ -189,6 +238,25 @@ class HttpClient
         // Succes
         if ($statusCode >= 200 && $statusCode < 300) {
             return $body ?? [];
+        }
+
+        // Erreur
+        throw ScellException::fromResponse($response);
+    }
+
+    /**
+     * Traite la reponse HTTP et retourne le contenu brut.
+     *
+     * @return string
+     * @throws ScellException
+     */
+    private function handleRawResponse(ResponseInterface $response): string
+    {
+        $statusCode = $response->getStatusCode();
+
+        // Succes
+        if ($statusCode >= 200 && $statusCode < 300) {
+            return $response->getBody()->getContents();
         }
 
         // Erreur

@@ -33,6 +33,9 @@ enum InvoiceStatus: string
     /** Refusee par le destinataire */
     case Rejected = 'rejected';
 
+    /** Payee - facture entrante marquee comme payee */
+    case Paid = 'paid';
+
     /** Erreur de traitement */
     case Error = 'error';
 
@@ -50,6 +53,7 @@ enum InvoiceStatus: string
             self::Transmitted => 'Transmise',
             self::Accepted => 'Acceptee',
             self::Rejected => 'Refusee',
+            self::Paid => 'Payee',
             self::Error => 'Erreur',
         };
     }
@@ -59,7 +63,7 @@ enum InvoiceStatus: string
      */
     public function isFinal(): bool
     {
-        return in_array($this, [self::Accepted, self::Rejected, self::Error]);
+        return in_array($this, [self::Accepted, self::Rejected, self::Paid, self::Error]);
     }
 
     /**

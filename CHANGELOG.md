@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-01-24
+
+### Added
+
+- **Mark Paid Support**: Mark incoming invoices as paid (mandatory status in French e-invoicing lifecycle)
+  - `$client->invoices()->markPaid($id, $data)` - Mark invoice as paid with optional payment reference
+
+- **Download Invoice Files**: Download original invoice files as binary content
+  - `$client->invoices()->downloadContent($id)` - Download PDF (Factur-X)
+  - `$client->invoices()->downloadContent($id, 'xml')` - Download XML (UBL/CII)
+
+- **New Invoice Fields**:
+  - `paid_at` - Payment timestamp
+  - `payment_reference` - Bank transfer ID, check number, etc.
+  - `payment_note` - Optional payment note
+
+- **New Invoice Status**:
+  - `InvoiceStatus::Paid` - Invoice has been marked as paid
+
+- **New Webhook Event**:
+  - `invoice.incoming.paid` - Triggered when incoming invoice is marked as paid
+
+- **New Helper Methods**:
+  - `Invoice::isPaid()` - Check if invoice has been paid
+  - `Invoice::isIncoming()` - Check if invoice is from a supplier
+
+- **HttpClient Enhancement**:
+  - `getRaw()` method for downloading binary content (PDF, XML files)
+
 ## [1.1.0] - 2026-01-24
 
 ### Added

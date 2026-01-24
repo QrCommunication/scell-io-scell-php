@@ -207,14 +207,36 @@ $invoice = $api->invoices()->dispute(
     DisputeType::AmountDispute,
     expectedAmount: 1200.00
 );
+
+// Marquer une facture comme payee (obligatoire dans le cycle de vie)
+$invoice = $api->invoices()->markPaid($invoiceId, [
+    'payment_reference' => 'VIR-2026-0124',
+    'paid_at' => '2026-01-24T10:30:00Z',
+    'note' => 'Paiement recu par virement bancaire'
+]);
+echo "Facture payee: {$invoice->status->label()}";
+echo "Reference: {$invoice->paymentReference}";
+
+// Verifier si une facture est payee
+if ($invoice->isPaid()) {
+    echo "Facture reglee le: {$invoice->paidAt->format('d/m/Y')}";
+}
 ```
 
 ### Telecharger des fichiers
 
 ```php
-// Telecharger une facture
+// Obtenir une URL temporaire de telechargement (15 min)
 $download = $api->invoices()->download($invoiceId, 'converted');
-echo "URL: {$download['url']}"; // URL temporaire (15 min)
+echo "URL: {$download['url']}";
+
+// Telecharger le contenu binaire d'une facture PDF (Factur-X)
+$pdfContent = $api->invoices()->downloadContent($invoiceId);
+file_put_contents('facture.pdf', $pdfContent);
+
+// Telecharger le contenu XML (UBL/CII)
+$xmlContent = $api->invoices()->downloadContent($invoiceId, 'xml');
+file_put_contents('facture.xml', $xmlContent);
 
 // Telecharger un document signe
 $download = $api->signatures()->download($signatureId, 'signed');
@@ -417,10 +439,14 @@ DisputeType::QualityDispute;    // Litige sur la qualite
 DisputeType::DeliveryDispute;   // Litige sur la livraison
 DisputeType::Other;             // Autre
 
+// Statut de facture
+InvoiceStatus::Paid;  // Nouveau v1.2.0 - Facture payee
+
 // Evenements webhook
 WebhookEvent::InvoiceValidated;
 WebhookEvent::InvoiceIncomingReceived;  // Nouveau v1.1.0
 WebhookEvent::InvoiceIncomingAccepted;  // Nouveau v1.1.0
+WebhookEvent::InvoiceIncomingPaid;      // Nouveau v1.2.0
 WebhookEvent::SignatureCompleted;
 WebhookEvent::BalanceLow;
 ```
@@ -484,6 +510,7 @@ composer check
 | `invoice.incoming.accepted` | Facture entrante acceptee |
 | `invoice.incoming.rejected` | Facture entrante rejetee |
 | `invoice.incoming.disputed` | Facture entrante contestee |
+| `invoice.incoming.paid` | Facture entrante payee |
 | `signature.created` | Signature creee |
 | `signature.signer_completed` | Un signataire a signe |
 | `signature.completed` | Tous les signataires ont signe |

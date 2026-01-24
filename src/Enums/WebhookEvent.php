@@ -22,6 +22,7 @@ enum WebhookEvent: string
     case InvoiceIncomingAccepted = 'invoice.incoming.accepted';
     case InvoiceIncomingRejected = 'invoice.incoming.rejected';
     case InvoiceIncomingDisputed = 'invoice.incoming.disputed';
+    case InvoiceIncomingPaid = 'invoice.incoming.paid';
 
     // Evenements signatures
     case SignatureCreated = 'signature.created';
@@ -52,6 +53,7 @@ enum WebhookEvent: string
             self::InvoiceIncomingAccepted => 'Facture entrante acceptee',
             self::InvoiceIncomingRejected => 'Facture entrante rejetee',
             self::InvoiceIncomingDisputed => 'Facture entrante contestee',
+            self::InvoiceIncomingPaid => 'Facture entrante payee',
             self::SignatureCreated => 'Signature creee',
             self::SignatureWaiting => 'Signature en attente',
             self::SignatureSigned => 'Document signe',

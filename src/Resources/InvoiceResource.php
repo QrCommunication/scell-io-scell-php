@@ -172,6 +172,26 @@ class InvoiceResource
     }
 
     /**
+     * Marque une facture entrante comme payee.
+     *
+     * Cette action est obligatoire dans le cycle de vie de la facturation
+     * electronique francaise pour finaliser le traitement d'une facture fournisseur.
+     *
+     * @param string $id UUID de la facture
+     * @param array{
+     *     payment_reference?: string,
+     *     paid_at?: string,
+     *     note?: string
+     * } $data Donnees de paiement optionnelles
+     * @return Invoice
+     */
+    public function markPaid(string $id, array $data = []): Invoice
+    {
+        $response = $this->http->post("invoices/{$id}/mark-paid", $data);
+        return Invoice::fromArray($response['data']);
+    }
+
+    /**
      * Cree une facture avec le builder fluent.
      *
      * @return InvoiceBuilder
@@ -182,7 +202,7 @@ class InvoiceResource
     }
 
     /**
-     * Telecharge un fichier de facture.
+     * Telecharge un fichier de facture (retourne une URL temporaire).
      *
      * @param string $id ID de la facture
      * @param string $type Type de fichier: 'original', 'converted', 'pdf'
@@ -191,6 +211,20 @@ class InvoiceResource
     public function download(string $id, string $type = 'converted'): array
     {
         return $this->http->get("invoices/{$id}/download/{$type}");
+    }
+
+    /**
+     * Telecharge le contenu binaire d'une facture.
+     *
+     * @param string $id UUID de la facture
+     * @param string $format Format du fichier: 'pdf' (Factur-X) ou 'xml' (UBL/CII)
+     * @return string Contenu binaire du fichier
+     */
+    public function downloadContent(string $id, string $format = 'pdf'): string
+    {
+        return $this->http->getRaw("invoices/{$id}/download", [
+            'format' => $format,
+        ]);
     }
 
     /**

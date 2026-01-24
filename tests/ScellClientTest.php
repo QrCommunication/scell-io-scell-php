@@ -305,15 +305,26 @@ class ScellClientTest extends TestCase
         $signatureEvents = WebhookEvent::forDomain('signature');
         $balanceEvents = WebhookEvent::forDomain('balance');
 
-        $this->assertCount(10, $invoiceEvents); // 6 sortantes + 4 entrantes
+        $this->assertCount(11, $invoiceEvents); // 6 sortantes + 5 entrantes (including paid)
         $this->assertCount(7, $signatureEvents);
         $this->assertCount(2, $balanceEvents);
 
         $allValues = WebhookEvent::values();
-        $this->assertCount(19, $allValues);
+        $this->assertCount(20, $allValues);
         $this->assertContains('invoice.validated', $allValues);
         $this->assertContains('invoice.incoming.received', $allValues);
+        $this->assertContains('invoice.incoming.paid', $allValues);
         $this->assertContains('signature.completed', $allValues);
+    }
+
+    #[Test]
+    public function it_has_incoming_paid_webhook_event(): void
+    {
+        $event = WebhookEvent::InvoiceIncomingPaid;
+
+        $this->assertEquals('invoice.incoming.paid', $event->value);
+        $this->assertEquals('Facture entrante payee', $event->label());
+        $this->assertEquals('invoice', $event->domain());
     }
 
     #[Test]
@@ -360,8 +371,15 @@ class ScellClientTest extends TestCase
     {
         $this->assertTrue(InvoiceStatus::Accepted->isFinal());
         $this->assertTrue(InvoiceStatus::Rejected->isFinal());
+        $this->assertTrue(InvoiceStatus::Paid->isFinal());
         $this->assertFalse(InvoiceStatus::Draft->isFinal());
         $this->assertTrue(InvoiceStatus::Validated->isActionable());
+    }
+
+    #[Test]
+    public function it_checks_paid_status_label(): void
+    {
+        $this->assertEquals('Payee', InvoiceStatus::Paid->label());
     }
 
     #[Test]
@@ -422,5 +440,159 @@ class ScellClientTest extends TestCase
         $this->assertEquals('12345678901234', $company->siret);
         $this->assertTrue($company->isActive());
         $this->assertFalse($company->isPendingKyc());
+    }
+
+    #[Test]
+    public function it_parses_paid_invoice_from_api_response(): void
+    {
+        $data = [
+            'id' => '123e4567-e89b-12d3-a456-426614174000',
+            'invoice_number' => 'FACT-2024-002',
+            'direction' => 'incoming',
+            'output_format' => 'facturx',
+            'issue_date' => '2024-01-15',
+            'total_ht' => 1000.00,
+            'total_tax' => 200.00,
+            'total_ttc' => 1200.00,
+            'seller' => [
+                'siret' => '12345678901234',
+                'name' => 'Fournisseur SA',
+                'address' => [
+                    'line1' => '1 Rue Test',
+                    'postal_code' => '75001',
+                    'city' => 'Paris',
+                ],
+            ],
+            'buyer' => [
+                'siret' => '98765432109876',
+                'name' => 'Ma Societe',
+                'address' => [
+                    'line1' => '2 Avenue Client',
+                    'postal_code' => '69001',
+                    'city' => 'Lyon',
+                ],
+            ],
+            'lines' => [],
+            'status' => 'paid',
+            'environment' => 'production',
+            'paid_at' => '2024-01-20T14:30:00Z',
+            'payment_reference' => 'VIR-2024-0120',
+            'payment_note' => 'Paiement par virement',
+        ];
+
+        $invoice = Invoice::fromArray($data);
+
+        $this->assertEquals(InvoiceStatus::Paid, $invoice->status);
+        $this->assertEquals(Direction::Incoming, $invoice->direction);
+        $this->assertNotNull($invoice->paidAt);
+        $this->assertEquals('2024-01-20', $invoice->paidAt->format('Y-m-d'));
+        $this->assertEquals('VIR-2024-0120', $invoice->paymentReference);
+        $this->assertEquals('Paiement par virement', $invoice->paymentNote);
+        $this->assertTrue($invoice->isPaid());
+        $this->assertTrue($invoice->isIncoming());
+        $this->assertTrue($invoice->isFinal());
+    }
+
+    #[Test]
+    public function it_detects_paid_invoice_by_status(): void
+    {
+        $data = [
+            'id' => 'inv-1',
+            'invoice_number' => 'FACT-001',
+            'direction' => 'incoming',
+            'output_format' => 'facturx',
+            'issue_date' => '2024-01-15',
+            'total_ht' => 100.00,
+            'total_tax' => 20.00,
+            'total_ttc' => 120.00,
+            'seller' => ['siret' => '12345678901234', 'name' => 'Test', 'address' => ['line1' => 'A', 'postal_code' => '75001', 'city' => 'Paris']],
+            'buyer' => ['siret' => '98765432109876', 'name' => 'Test2', 'address' => ['line1' => 'B', 'postal_code' => '69001', 'city' => 'Lyon']],
+            'lines' => [],
+            'status' => 'paid',
+            'environment' => 'production',
+        ];
+
+        $invoice = Invoice::fromArray($data);
+
+        $this->assertTrue($invoice->isPaid());
+    }
+
+    #[Test]
+    public function it_detects_paid_invoice_by_paid_at(): void
+    {
+        $data = [
+            'id' => 'inv-2',
+            'invoice_number' => 'FACT-002',
+            'direction' => 'incoming',
+            'output_format' => 'facturx',
+            'issue_date' => '2024-01-15',
+            'total_ht' => 100.00,
+            'total_tax' => 20.00,
+            'total_ttc' => 120.00,
+            'seller' => ['siret' => '12345678901234', 'name' => 'Test', 'address' => ['line1' => 'A', 'postal_code' => '75001', 'city' => 'Paris']],
+            'buyer' => ['siret' => '98765432109876', 'name' => 'Test2', 'address' => ['line1' => 'B', 'postal_code' => '69001', 'city' => 'Lyon']],
+            'lines' => [],
+            'status' => 'accepted',  // Not paid status, but has paid_at
+            'environment' => 'production',
+            'paid_at' => '2024-01-20T14:30:00Z',
+        ];
+
+        $invoice = Invoice::fromArray($data);
+
+        $this->assertTrue($invoice->isPaid());
+    }
+
+    #[Test]
+    public function it_detects_unpaid_invoice(): void
+    {
+        $data = [
+            'id' => 'inv-3',
+            'invoice_number' => 'FACT-003',
+            'direction' => 'incoming',
+            'output_format' => 'facturx',
+            'issue_date' => '2024-01-15',
+            'total_ht' => 100.00,
+            'total_tax' => 20.00,
+            'total_ttc' => 120.00,
+            'seller' => ['siret' => '12345678901234', 'name' => 'Test', 'address' => ['line1' => 'A', 'postal_code' => '75001', 'city' => 'Paris']],
+            'buyer' => ['siret' => '98765432109876', 'name' => 'Test2', 'address' => ['line1' => 'B', 'postal_code' => '69001', 'city' => 'Lyon']],
+            'lines' => [],
+            'status' => 'accepted',
+            'environment' => 'production',
+        ];
+
+        $invoice = Invoice::fromArray($data);
+
+        $this->assertFalse($invoice->isPaid());
+    }
+
+    #[Test]
+    public function it_detects_incoming_vs_outgoing_invoice(): void
+    {
+        $incomingData = [
+            'id' => 'inv-4',
+            'invoice_number' => 'FACT-004',
+            'direction' => 'incoming',
+            'output_format' => 'facturx',
+            'issue_date' => '2024-01-15',
+            'total_ht' => 100.00,
+            'total_tax' => 20.00,
+            'total_ttc' => 120.00,
+            'seller' => ['siret' => '12345678901234', 'name' => 'Test', 'address' => ['line1' => 'A', 'postal_code' => '75001', 'city' => 'Paris']],
+            'buyer' => ['siret' => '98765432109876', 'name' => 'Test2', 'address' => ['line1' => 'B', 'postal_code' => '69001', 'city' => 'Lyon']],
+            'lines' => [],
+            'status' => 'accepted',
+            'environment' => 'production',
+        ];
+
+        $outgoingData = array_merge($incomingData, ['id' => 'inv-5', 'direction' => 'outgoing']);
+
+        $incomingInvoice = Invoice::fromArray($incomingData);
+        $outgoingInvoice = Invoice::fromArray($outgoingData);
+
+        $this->assertTrue($incomingInvoice->isIncoming());
+        $this->assertFalse($incomingInvoice->isOutgoing());
+        $this->assertFalse($outgoingInvoice->isIncoming());
+        $this->assertTrue($outgoingInvoice->isOutgoing());
     }
 }
