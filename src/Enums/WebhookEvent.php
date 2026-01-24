@@ -9,13 +9,19 @@ namespace Scell\Sdk\Enums;
  */
 enum WebhookEvent: string
 {
-    // Evenements factures
+    // Evenements factures sortantes
     case InvoiceCreated = 'invoice.created';
     case InvoiceValidated = 'invoice.validated';
     case InvoiceTransmitted = 'invoice.transmitted';
     case InvoiceAccepted = 'invoice.accepted';
     case InvoiceRejected = 'invoice.rejected';
     case InvoiceError = 'invoice.error';
+
+    // Evenements factures entrantes
+    case InvoiceIncomingReceived = 'invoice.incoming.received';
+    case InvoiceIncomingAccepted = 'invoice.incoming.accepted';
+    case InvoiceIncomingRejected = 'invoice.incoming.rejected';
+    case InvoiceIncomingDisputed = 'invoice.incoming.disputed';
 
     // Evenements signatures
     case SignatureCreated = 'signature.created';
@@ -42,6 +48,10 @@ enum WebhookEvent: string
             self::InvoiceAccepted => 'Facture acceptee',
             self::InvoiceRejected => 'Facture refusee',
             self::InvoiceError => 'Erreur facture',
+            self::InvoiceIncomingReceived => 'Facture entrante recue',
+            self::InvoiceIncomingAccepted => 'Facture entrante acceptee',
+            self::InvoiceIncomingRejected => 'Facture entrante rejetee',
+            self::InvoiceIncomingDisputed => 'Facture entrante contestee',
             self::SignatureCreated => 'Signature creee',
             self::SignatureWaiting => 'Signature en attente',
             self::SignatureSigned => 'Document signe',

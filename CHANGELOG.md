@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-01-24
+
+### Added
+- Incoming invoices support (supplier invoices)
+  - `incoming()` - List incoming invoices with filtering
+  - `accept()` - Accept an incoming invoice
+  - `reject()` - Reject an incoming invoice with reason code
+  - `dispute()` - Dispute an incoming invoice
+- New enums for incoming invoice workflows
+  - `RejectionCode` - Rejection codes (incorrect_amount, duplicate, unknown_order, incorrect_vat, other)
+  - `DisputeType` - Dispute types (amount_dispute, quality_dispute, delivery_dispute, other)
+- New webhook events for incoming invoices
+  - `invoice.incoming.received` - Incoming invoice received
+  - `invoice.incoming.accepted` - Incoming invoice accepted
+  - `invoice.incoming.rejected` - Incoming invoice rejected
+  - `invoice.incoming.disputed` - Incoming invoice disputed
+
 ## [1.0.0] - 2026-01-24
 
 ### Added

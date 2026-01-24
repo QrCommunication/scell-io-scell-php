@@ -171,6 +171,44 @@ $companies = $client->companies()->list();
 $webhooks = $client->webhooks()->list();
 ```
 
+### Gerer les factures entrantes (fournisseurs)
+
+```php
+use Scell\Sdk\Enums\RejectionCode;
+use Scell\Sdk\Enums\DisputeType;
+
+// Lister les factures entrantes
+$incoming = $api->invoices()->incoming([
+    'status' => 'pending',
+    'per_page' => 25,
+]);
+
+foreach ($incoming->data as $invoice) {
+    echo "{$invoice->invoiceNumber} - {$invoice->sellerName}: {$invoice->totalTtc} EUR";
+}
+
+// Accepter une facture
+$invoice = $api->invoices()->accept($invoiceId, [
+    'comment' => 'Facture conforme',
+]);
+echo "Facture acceptee: {$invoice->status->label()}";
+
+// Rejeter une facture avec un code de rejet
+$invoice = $api->invoices()->reject(
+    $invoiceId,
+    'Le montant ne correspond pas a la commande',
+    RejectionCode::IncorrectAmount
+);
+
+// Contester une facture (litige)
+$invoice = $api->invoices()->dispute(
+    $invoiceId,
+    'Montant facture: 1500 EUR, montant commande: 1200 EUR',
+    DisputeType::AmountDispute,
+    expectedAmount: 1200.00
+);
+```
+
 ### Telecharger des fichiers
 
 ```php
@@ -349,6 +387,8 @@ use Scell\Sdk\Enums\SignatureStatus;
 use Scell\Sdk\Enums\AuthMethod;
 use Scell\Sdk\Enums\WebhookEvent;
 use Scell\Sdk\Enums\Environment;
+use Scell\Sdk\Enums\RejectionCode;
+use Scell\Sdk\Enums\DisputeType;
 
 // Direction de facture
 Direction::Outgoing; // Vente
@@ -364,8 +404,23 @@ AuthMethod::Email; // OTP par email
 AuthMethod::Sms;   // OTP par SMS
 AuthMethod::Both;  // Email + SMS
 
+// Codes de rejet (factures entrantes)
+RejectionCode::IncorrectAmount; // Montant incorrect
+RejectionCode::Duplicate;       // Facture en double
+RejectionCode::UnknownOrder;    // Commande inconnue
+RejectionCode::IncorrectVat;    // TVA incorrecte
+RejectionCode::Other;           // Autre
+
+// Types de litige (factures entrantes)
+DisputeType::AmountDispute;     // Litige sur le montant
+DisputeType::QualityDispute;    // Litige sur la qualite
+DisputeType::DeliveryDispute;   // Litige sur la livraison
+DisputeType::Other;             // Autre
+
 // Evenements webhook
 WebhookEvent::InvoiceValidated;
+WebhookEvent::InvoiceIncomingReceived;  // Nouveau v1.1.0
+WebhookEvent::InvoiceIncomingAccepted;  // Nouveau v1.1.0
 WebhookEvent::SignatureCompleted;
 WebhookEvent::BalanceLow;
 ```
@@ -425,6 +480,10 @@ composer check
 | `invoice.validated` | Facture validee et conforme |
 | `invoice.transmitted` | Facture transmise au PDP |
 | `invoice.rejected` | Facture rejetee |
+| `invoice.incoming.received` | Facture entrante recue |
+| `invoice.incoming.accepted` | Facture entrante acceptee |
+| `invoice.incoming.rejected` | Facture entrante rejetee |
+| `invoice.incoming.disputed` | Facture entrante contestee |
 | `signature.created` | Signature creee |
 | `signature.signer_completed` | Un signataire a signe |
 | `signature.completed` | Tous les signataires ont signe |

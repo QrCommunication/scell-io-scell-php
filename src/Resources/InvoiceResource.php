@@ -10,8 +10,10 @@ use Scell\Sdk\DTOs\Invoice;
 use Scell\Sdk\DTOs\InvoiceLine;
 use Scell\Sdk\DTOs\PaginatedResult;
 use Scell\Sdk\Enums\Direction;
+use Scell\Sdk\Enums\DisputeType;
 use Scell\Sdk\Enums\InvoiceStatus;
 use Scell\Sdk\Enums\OutputFormat;
+use Scell\Sdk\Enums\RejectionCode;
 use Scell\Sdk\Http\HttpClient;
 
 /**
@@ -85,6 +87,87 @@ class InvoiceResource
     {
         $payload = $this->normalizeCreatePayload($data);
         $response = $this->http->post('invoices', $payload);
+        return Invoice::fromArray($response['data']);
+    }
+
+    /**
+     * Liste les factures entrantes (fournisseurs).
+     *
+     * @param array{
+     *     status?: InvoiceStatus|string,
+     *     from?: DateTimeInterface|string,
+     *     to?: DateTimeInterface|string,
+     *     per_page?: int,
+     *     page?: int
+     * } $params
+     * @return PaginatedResult<Invoice>
+     */
+    public function incoming(array $params = []): PaginatedResult
+    {
+        $query = $this->normalizeFilters($params);
+        $response = $this->http->get('invoices/incoming', $query);
+
+        return PaginatedResult::fromArray($response, fn(array $data) => Invoice::fromArray($data));
+    }
+
+    /**
+     * Accepte une facture entrante.
+     *
+     * @param string $id ID de la facture
+     * @param array{
+     *     comment?: string,
+     *     metadata?: array
+     * } $data Donnees optionnelles
+     */
+    public function accept(string $id, array $data = []): Invoice
+    {
+        $response = $this->http->post("invoices/{$id}/accept", $data);
+        return Invoice::fromArray($response['data']);
+    }
+
+    /**
+     * Rejette une facture entrante.
+     *
+     * @param string $id ID de la facture
+     * @param string $reason Motif du rejet
+     * @param RejectionCode|string $reasonCode Code de rejet
+     */
+    public function reject(string $id, string $reason, RejectionCode|string $reasonCode): Invoice
+    {
+        $code = $reasonCode instanceof RejectionCode ? $reasonCode->value : $reasonCode;
+
+        $response = $this->http->post("invoices/{$id}/reject", [
+            'reason' => $reason,
+            'reason_code' => $code,
+        ]);
+
+        return Invoice::fromArray($response['data']);
+    }
+
+    /**
+     * Conteste une facture entrante.
+     *
+     * @param string $id ID de la facture
+     * @param string $reason Motif de la contestation
+     * @param DisputeType|string $disputeType Type de litige
+     * @param float|null $expectedAmount Montant attendu (optionnel)
+     */
+    public function dispute(
+        string $id,
+        string $reason,
+        DisputeType|string $disputeType,
+        ?float $expectedAmount = null
+    ): Invoice {
+        $type = $disputeType instanceof DisputeType ? $disputeType->value : $disputeType;
+
+        $payload = array_filter([
+            'reason' => $reason,
+            'dispute_type' => $type,
+            'expected_amount' => $expectedAmount,
+        ], fn($value) => $value !== null);
+
+        $response = $this->http->post("invoices/{$id}/dispute", $payload);
+
         return Invoice::fromArray($response['data']);
     }
 

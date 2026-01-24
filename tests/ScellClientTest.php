@@ -305,13 +305,14 @@ class ScellClientTest extends TestCase
         $signatureEvents = WebhookEvent::forDomain('signature');
         $balanceEvents = WebhookEvent::forDomain('balance');
 
-        $this->assertCount(6, $invoiceEvents);
+        $this->assertCount(10, $invoiceEvents); // 6 sortantes + 4 entrantes
         $this->assertCount(7, $signatureEvents);
         $this->assertCount(2, $balanceEvents);
 
         $allValues = WebhookEvent::values();
-        $this->assertCount(15, $allValues);
+        $this->assertCount(19, $allValues);
         $this->assertContains('invoice.validated', $allValues);
+        $this->assertContains('invoice.incoming.received', $allValues);
         $this->assertContains('signature.completed', $allValues);
     }
 
