@@ -1,0 +1,147 @@
+# =============================================================================
+# Scell.io PHP SDK - Release Workflow
+# =============================================================================
+# Ce workflow s'execute lors du push d'un tag v* (ex: v1.0.0)
+# Il execute les tests complets puis cree une release GitHub.
+#
+# NOTE: La publication sur Packagist est geree manuellement via le webhook
+# configure dans les settings du repository Packagist.
+# =============================================================================
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Permissions necessaires pour creer des releases
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job: Tests complets avant release
+  # ---------------------------------------------------------------------------
+  # S'assure que tous les tests passent avant de creer la release
+  # ---------------------------------------------------------------------------
+  test:
+    name: Pre-release Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        php: ['8.2', '8.3']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, json, curl, xml
+          coverage: xdebug
+          tools: composer:v2
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.lock', '**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-${{ matrix.php }}-
+            ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Run PHPStan analysis
+        run: composer analyse
+
+      - name: Run PHPUnit tests
+        run: composer test
+
+  # ---------------------------------------------------------------------------
+  # Job: Creation de la release GitHub
+  # ---------------------------------------------------------------------------
+  # Cree une release GitHub avec les notes de version extraites du CHANGELOG
+  # ---------------------------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: version
+        env:
+          # Utilisation de env pour eviter l'injection de commandes
+          GH_REF: ${{ github.ref }}
+        run: |
+          # Extrait la version du tag (ex: refs/tags/v1.0.0 -> 1.0.0)
+          VERSION="${GH_REF#refs/tags/v}"
+          TAG="${GH_REF#refs/tags/}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Release version: $VERSION"
+
+      - name: Extract changelog for this version
+        id: changelog
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Extrait la section du CHANGELOG correspondant a cette version
+          # Cherche entre "## [version]" et le prochain "## ["
+
+          # Utilise awk pour extraire la section du changelog
+          CHANGELOG=$(awk "/^## \[$RELEASE_VERSION\]/{found=1; next} /^## \[/{if(found) exit} found{print}" CHANGELOG.md)
+
+          # Si aucun changelog trouve, utilise un message par defaut
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="Release $RELEASE_VERSION du SDK PHP Scell.io"
+          fi
+
+          # Ecrit le changelog dans un fichier pour le passer a la release
+          echo "$CHANGELOG" > release_notes.md
+          echo "Changelog extracted successfully"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Scell.io PHP SDK v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.tag, '-') }}
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release summary
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          echo "## Release Created Successfully!" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Version:** $RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Tag:** $RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Next Steps" >> "$GITHUB_STEP_SUMMARY"
+          echo "- La release GitHub a ete creee automatiquement" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Packagist sera notifie via le webhook configure" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Verifiez la mise a jour sur https://packagist.org/packages/scell/sdk" >> "$GITHUB_STEP_SUMMARY"
