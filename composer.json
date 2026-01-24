@@ -1,0 +1,81 @@
+{
+    "name": "scell/sdk",
+    "description": "SDK PHP officiel pour l'API Scell.io - Facturation electronique (Factur-X/UBL/CII) et signature electronique (eIDAS EU-SES)",
+    "keywords": ["scell", "facturx", "ubl", "cii", "eidas", "signature", "invoice", "api", "sdk", "france", "b2b", "electronic-invoice"],
+    "homepage": "https://scell.io",
+    "license": "MIT",
+    "type": "library",
+    "readme": "README.md",
+    "authors": [
+        {
+            "name": "Scell.io Team",
+            "email": "dev@scell.io",
+            "homepage": "https://scell.io"
+        }
+    ],
+    "support": {
+        "email": "support@scell.io",
+        "issues": "https://github.com/scell-io/sdk-php/issues",
+        "source": "https://github.com/scell-io/sdk-php",
+        "docs": "https://docs.scell.io"
+    },
+    "require": {
+        "php": "^8.2",
+        "guzzlehttp/guzzle": "^7.0",
+        "psr/http-message": "^1.0 || ^2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "mockery/mockery": "^1.6",
+        "phpstan/phpstan": "^1.10",
+        "orchestra/testbench": "^9.0"
+    },
+    "suggest": {
+        "illuminate/support": "Required for Laravel integration (^11.0 || ^12.0)"
+    },
+    "autoload": {
+        "psr-4": {
+            "Scell\\Sdk\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Scell\\Sdk\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Scell\\Sdk\\Laravel\\ScellServiceProvider"
+            ],
+            "aliases": {
+                "Scell": "Scell\\Sdk\\Laravel\\Facades\\Scell"
+            }
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test-coverage": "phpunit --coverage-html coverage",
+        "analyse": "phpstan analyse src --level=8",
+        "check": [
+            "@analyse",
+            "@test"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run PHPUnit tests",
+        "test-coverage": "Run tests with HTML coverage report",
+        "analyse": "Run PHPStan static analysis",
+        "check": "Run all checks (analyse + test)"
+    },
+    "config": {
+        "sort-packages": true,
+        "preferred-install": "dist",
+        "optimize-autoloader": true,
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
