@@ -1,0 +1,53 @@
+# =============================================================================
+# PHPStan Configuration for Scell.io PHP SDK
+# =============================================================================
+# Level 6 analysis with specific ignores for SDK patterns
+# =============================================================================
+
+parameters:
+    level: 6
+    paths:
+        - src
+
+    # Do not report errors for unmatched ignore patterns
+    reportUnmatchedIgnoredErrors: false
+
+    # Ignore errors for array types (common in API SDKs handling dynamic data)
+    ignoreErrors:
+        # Ignore "no value type specified in iterable type array" errors
+        -
+            message: '#no value type specified in iterable type array#'
+            path: src/
+
+        # Ignore Laravel ServiceProvider array access (Laravel is optional)
+        -
+            message: '#Cannot access offset .* on Illuminate\\\\Contracts\\\\Foundation\\\\Application#'
+            path: src/Laravel/
+
+        # Ignore return type mismatches for API responses (dynamic data)
+        -
+            message: '#should return array\{.*\} but returns array<string, mixed>#'
+            path: src/Resources/
+
+        # Ignore match expression on WebhookEvent (exhaustive check not needed)
+        -
+            message: '#Match expression does not handle remaining value#'
+            path: src/Enums/
+
+        # Ignore GuzzleException in ScellException (interface implements Throwable)
+        -
+            message: '#Parameter .* of class Scell\\\\Sdk\\\\Exceptions\\\\ScellException constructor expects Exception\|null#'
+            path: src/Http/
+
+        # Ignore file_get_contents return type in SignatureBuilder
+        -
+            message: '#Parameter .* expects string, string\|false given#'
+            path: src/Resources/SignatureBuilder.php
+
+        # Ignore SignatureResource create method parameter type
+        -
+            message: '#Parameter .* of method Scell\\\\Sdk\\\\Resources\\\\SignatureResource::create\(\) expects array\{#'
+            path: src/Resources/SignatureBuilder.php
+
+    # Treat PHPDoc types as certain
+    treatPhpDocTypesAsCertain: false

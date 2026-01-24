@@ -33,7 +33,7 @@ class ScellException extends Exception
     public function __construct(
         string $message = '',
         int $code = 0,
-        ?Exception $previous = null,
+        ?\Throwable $previous = null,
         ?string $scellCode = null,
         ?array $responseBody = null,
         ?int $httpStatusCode = null

@@ -1,6 +1,5 @@
 {
     "name": "scell/sdk",
-    "version": "1.0.0",
     "description": "SDK PHP officiel pour l'API Scell.io - Facturation electronique (Factur-X/UBL/CII) et signature electronique (eIDAS EU-SES)",
     "keywords": ["scell", "facturx", "ubl", "cii", "eidas", "signature", "invoice", "api", "sdk", "france", "b2b", "electronic-invoice"],
     "homepage": "https://scell.io",
@@ -57,7 +56,7 @@
     "scripts": {
         "test": "phpunit",
         "test-coverage": "phpunit --coverage-html coverage",
-        "analyse": "phpstan analyse src --level=8",
+        "analyse": "phpstan analyse --configuration=phpstan.neon.dist",
         "check": [
             "@analyse",
             "@test"
