@@ -9,6 +9,7 @@ use Scell\Sdk\Resources\BalanceResource;
 use Scell\Sdk\Resources\CompanyResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\SignatureResource;
+use Scell\Sdk\Resources\TenantCreditNoteResource;
 use Scell\Sdk\Resources\WebhookResource;
 
 /**
@@ -46,6 +47,7 @@ class ScellClient
     private ?CompanyResource $companies = null;
     private ?BalanceResource $balance = null;
     private ?WebhookResource $webhooks = null;
+    private ?TenantCreditNoteResource $tenantCreditNotes = null;
 
     /**
      * Cree une instance du client avec Bearer token.
@@ -109,6 +111,14 @@ class ScellClient
     public function webhooks(): WebhookResource
     {
         return $this->webhooks ??= new WebhookResource($this->http);
+    }
+
+    /**
+     * Resource pour les avoirs des sub-tenants.
+     */
+    public function tenantCreditNotes(): TenantCreditNoteResource
+    {
+        return $this->tenantCreditNotes ??= new TenantCreditNoteResource($this->http);
     }
 
     /**

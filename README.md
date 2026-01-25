@@ -248,6 +248,63 @@ foreach ($audit['data'] as $entry) {
 }
 ```
 
+### Gerer les avoirs (Credit Notes) pour les sub-tenants
+
+```php
+// Lister les avoirs d'un sub-tenant
+$creditNotes = $client->tenantCreditNotes()->list($subTenantId, [
+    'status' => 'draft',
+    'per_page' => 25,
+]);
+
+foreach ($creditNotes['data'] as $creditNote) {
+    echo "{$creditNote['number']}: {$creditNote['total_ttc']} EUR";
+}
+
+// Verifier les montants creditables pour une facture
+$remaining = $client->tenantCreditNotes()->remainingCreditable($invoiceId);
+echo "Montant restant creditable: {$remaining['data']['remaining_amount']} EUR";
+
+// Creer un avoir partiel
+$creditNote = $client->tenantCreditNotes()->create($subTenantId, [
+    'invoice_id' => $invoiceId,
+    'reason' => 'Remise commerciale',
+    'type' => 'partial',
+    'items' => [
+        [
+            'description' => 'Remise sur prestation',
+            'quantity' => 1,
+            'unit_price' => 100.00,
+            'tax_rate' => 20.0,
+        ],
+    ],
+]);
+
+echo "Avoir cree: {$creditNote['data']['id']}";
+
+// Creer un avoir total (annulation complete)
+$creditNote = $client->tenantCreditNotes()->create($subTenantId, [
+    'invoice_id' => $invoiceId,
+    'reason' => 'Annulation de la commande',
+    'type' => 'full',
+]);
+
+// Recuperer un avoir
+$creditNote = $client->tenantCreditNotes()->get($creditNoteId);
+echo "Statut: {$creditNote['data']['status']}";
+
+// Envoyer (valider et transmettre) l'avoir
+$result = $client->tenantCreditNotes()->send($creditNoteId);
+echo "Avoir envoye: {$result['message']}";
+
+// Telecharger le PDF de l'avoir
+$pdfContent = $client->tenantCreditNotes()->download($creditNoteId);
+file_put_contents('avoir.pdf', $pdfContent);
+
+// Supprimer un avoir en brouillon
+$client->tenantCreditNotes()->delete($creditNoteId);
+```
+
 ## Integration Laravel
 
 ### Installation
@@ -497,6 +554,7 @@ composer check
 | `companies()` | Gestion des entreprises |
 | `balance()` | Consultation du solde |
 | `webhooks()` | Gestion des webhooks |
+| `tenantCreditNotes()` | Gestion des avoirs pour les sub-tenants |
 
 ### Webhook Events
 
