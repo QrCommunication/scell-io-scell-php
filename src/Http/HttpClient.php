@@ -25,6 +25,7 @@ class HttpClient
     private string $baseUrl;
     private ?string $bearerToken = null;
     private ?string $apiKey = null;
+    private ?string $tenantKey = null;
 
     /**
      * Cree une instance du client HTTP.
@@ -68,6 +69,18 @@ class HttpClient
     {
         $this->apiKey = $apiKey;
         $this->bearerToken = null;
+        $this->tenantKey = null;
+        return $this;
+    }
+
+    /**
+     * Configure l'authentification par Tenant Key.
+     */
+    public function withTenantKey(string $tenantKey): self
+    {
+        $this->tenantKey = $tenantKey;
+        $this->bearerToken = null;
+        $this->apiKey = null;
         return $this;
     }
 
@@ -218,6 +231,8 @@ class HttpClient
             $headers['Authorization'] = 'Bearer ' . $this->bearerToken;
         } elseif ($this->apiKey) {
             $headers['X-API-Key'] = $this->apiKey;
+        } elseif ($this->tenantKey) {
+            $headers['X-Tenant-Key'] = $this->tenantKey;
         }
 
         return $headers;
@@ -268,7 +283,7 @@ class HttpClient
      */
     public function hasCredentials(): bool
     {
-        return $this->bearerToken !== null || $this->apiKey !== null;
+        return $this->bearerToken !== null || $this->apiKey !== null || $this->tenantKey !== null;
     }
 
     /**
