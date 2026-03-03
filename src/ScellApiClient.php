@@ -17,10 +17,10 @@ use Scell\Sdk\Resources\SignatureResource;
  * @example
  * ```php
  * // Initialisation avec API Key
- * $api = ScellApiClient::withApiKey('sk_live_...');
+ * $api = ScellApiClient::withApiKey('tk_live_...');
  *
  * // Ou mode sandbox
- * $api = ScellApiClient::sandbox('sk_test_...');
+ * $api = ScellApiClient::sandbox('tk_test_...');
  *
  * // Creer une facture
  * $invoice = $api->invoices()->builder()
@@ -51,7 +51,7 @@ class ScellApiClient
     /**
      * Cree une instance du client API.
      *
-     * @param string $apiKey Cle API (commence par sk_live_ ou sk_test_)
+     * @param string $apiKey Cle API (commence par tk_live_ ou tk_test_)
      * @param Config|null $config Configuration optionnelle
      */
     private function __construct(
@@ -75,7 +75,7 @@ class ScellApiClient
     /**
      * Cree un client avec une API Key.
      *
-     * @param string $apiKey Cle API (sk_live_... ou sk_test_...)
+     * @param string $apiKey Cle API (tk_live_... ou tk_test_...)
      * @param Config|null $config Configuration optionnelle
      */
     public static function withApiKey(string $apiKey, ?Config $config = null): self
@@ -86,7 +86,7 @@ class ScellApiClient
     /**
      * Cree un client en mode sandbox.
      *
-     * @param string $apiKey Cle API sandbox (sk_test_...)
+     * @param string $apiKey Cle API sandbox (tk_test_...)
      */
     public static function sandbox(string $apiKey): self
     {

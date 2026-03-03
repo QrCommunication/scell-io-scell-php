@@ -31,7 +31,7 @@ composer require scell/sdk
 ```env
 # API
 SCELL_BASE_URL=https://api.scell.io/api/v1
-SCELL_API_KEY=sk_live_...
+SCELL_API_KEY=tk_live_...
 
 # Optionnel - Pour le dashboard (Bearer token)
 SCELL_BEARER_TOKEN=eyJ...
@@ -52,10 +52,10 @@ use Scell\Sdk\DTOs\Address;
 use Scell\Sdk\Enums\AuthMethod;
 
 // Initialisation
-$api = ScellApiClient::withApiKey('sk_live_...');
+$api = ScellApiClient::withApiKey('tk_live_...');
 
 // Mode sandbox pour les tests
-$api = ScellApiClient::sandbox('sk_test_...');
+$api = ScellApiClient::sandbox('tk_test_...');
 ```
 
 ### Creer une facture
@@ -318,7 +318,7 @@ php artisan vendor:publish --tag=scell-config
 ### Configuration (.env)
 
 ```env
-SCELL_API_KEY=sk_live_...
+SCELL_API_KEY=tk_live_...
 SCELL_WEBHOOK_SECRET=whsec_...
 ```
 
@@ -524,7 +524,7 @@ $config = new Config(
     webhookSecret: 'whsec_...',
 );
 
-$api = ScellApiClient::withApiKey('sk_live_...', $config);
+$api = ScellApiClient::withApiKey('tk_live_...', $config);
 ```
 
 ## Tests
