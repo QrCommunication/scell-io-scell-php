@@ -118,6 +118,20 @@ class SignatureResource
     }
 
     /**
+     * Recupere la piste d'audit de la signature (format JSON).
+     *
+     * Retourne l'historique complet des actions sur la signature :
+     * creation, envoi, ouverture, signature, refus, etc.
+     *
+     * @param string $id ID de la signature
+     * @return array{data: array[], integrity_valid: bool}
+     */
+    public function auditTrail(string $id): array
+    {
+        return $this->http->get("signatures/{$id}/audit-trail");
+    }
+
+    /**
      * Normalise les filtres de liste.
      */
     private function normalizeFilters(array $filters): array

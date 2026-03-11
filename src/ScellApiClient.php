@@ -5,8 +5,16 @@ declare(strict_types=1);
 namespace Scell\Sdk;
 
 use Scell\Sdk\Http\HttpClient;
+use Scell\Sdk\Resources\BillingResource;
+use Scell\Sdk\Resources\FiscalResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\SignatureResource;
+use Scell\Sdk\Resources\StatsResource;
+use Scell\Sdk\Resources\SubTenantResource;
+use Scell\Sdk\Resources\TenantCreditNoteResource;
+use Scell\Sdk\Resources\TenantDirectInvoiceResource;
+use Scell\Sdk\Resources\TenantIncomingInvoiceResource;
+use Scell\Sdk\Resources\TenantInvoiceResource;
 
 /**
  * Client API Scell.io (authentification par API Key).
@@ -17,10 +25,10 @@ use Scell\Sdk\Resources\SignatureResource;
  * @example
  * ```php
  * // Initialisation avec API Key
- * $api = ScellApiClient::withApiKey('tk_live_...');
+ * $api = ScellApiClient::withApiKey('sk_live_...');
  *
  * // Ou mode sandbox
- * $api = ScellApiClient::sandbox('tk_test_...');
+ * $api = ScellApiClient::sandbox('sk_test_...');
  *
  * // Creer une facture
  * $invoice = $api->invoices()->builder()
@@ -33,12 +41,9 @@ use Scell\Sdk\Resources\SignatureResource;
  *     ->addLine('Prestation', 1, 1000.00, 20.0)
  *     ->create();
  *
- * // Creer une signature
- * $signature = $api->signatures()->builder()
- *     ->title('Contrat')
- *     ->documentFromFile('/path/to/doc.pdf')
- *     ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
- *     ->create();
+ * // Gerer les sub-tenants
+ * $subTenant = $api->subTenants()->create([...]);
+ * $stats = $api->stats()->overview();
  * ```
  */
 class ScellApiClient
@@ -47,11 +52,19 @@ class ScellApiClient
     private readonly Config $config;
     private ?InvoiceResource $invoices = null;
     private ?SignatureResource $signatures = null;
+    private ?SubTenantResource $subTenants = null;
+    private ?FiscalResource $fiscal = null;
+    private ?StatsResource $stats = null;
+    private ?BillingResource $billing = null;
+    private ?TenantCreditNoteResource $creditNotes = null;
+    private ?TenantInvoiceResource $tenantInvoices = null;
+    private ?TenantDirectInvoiceResource $directInvoices = null;
+    private ?TenantIncomingInvoiceResource $incomingInvoices = null;
 
     /**
      * Cree une instance du client API.
      *
-     * @param string $apiKey Cle API (commence par tk_live_ ou tk_test_)
+     * @param string $apiKey Cle API (commence par sk_live_ ou sk_test_)
      * @param Config|null $config Configuration optionnelle
      */
     private function __construct(
@@ -75,7 +88,7 @@ class ScellApiClient
     /**
      * Cree un client avec une API Key.
      *
-     * @param string $apiKey Cle API (tk_live_... ou tk_test_...)
+     * @param string $apiKey Cle API (sk_live_... ou sk_test_...)
      * @param Config|null $config Configuration optionnelle
      */
     public static function withApiKey(string $apiKey, ?Config $config = null): self
@@ -86,7 +99,7 @@ class ScellApiClient
     /**
      * Cree un client en mode sandbox.
      *
-     * @param string $apiKey Cle API sandbox (tk_test_...)
+     * @param string $apiKey Cle API sandbox (sk_test_...)
      */
     public static function sandbox(string $apiKey): self
     {
@@ -106,12 +119,6 @@ class ScellApiClient
 
     /**
      * Resource pour les factures.
-     *
-     * Endpoints disponibles:
-     * - POST /invoices - Creer une facture
-     * - GET /invoices/{id}/download/{type} - Telecharger
-     * - GET /invoices/{id}/audit-trail - Piste d'audit
-     * - POST /invoices/convert - Convertir format
      */
     public function invoices(): InvoiceResource
     {
@@ -120,16 +127,74 @@ class ScellApiClient
 
     /**
      * Resource pour les signatures.
-     *
-     * Endpoints disponibles:
-     * - POST /signatures - Creer une demande
-     * - GET /signatures/{id}/download/{type} - Telecharger
-     * - POST /signatures/{id}/remind - Envoyer rappel
-     * - POST /signatures/{id}/cancel - Annuler
      */
     public function signatures(): SignatureResource
     {
         return $this->signatures ??= new SignatureResource($this->http);
+    }
+
+    /**
+     * Resource pour les sub-tenants (praticiens).
+     */
+    public function subTenants(): SubTenantResource
+    {
+        return $this->subTenants ??= new SubTenantResource($this->http);
+    }
+
+    /**
+     * Resource pour la conformite fiscale NF525.
+     */
+    public function fiscal(): FiscalResource
+    {
+        return $this->fiscal ??= new FiscalResource($this->http);
+    }
+
+    /**
+     * Resource pour les statistiques.
+     */
+    public function stats(): StatsResource
+    {
+        return $this->stats ??= new StatsResource($this->http);
+    }
+
+    /**
+     * Resource pour la facturation plateforme.
+     */
+    public function billing(): BillingResource
+    {
+        return $this->billing ??= new BillingResource($this->http);
+    }
+
+    /**
+     * Resource pour les avoirs (credit notes).
+     */
+    public function creditNotes(): TenantCreditNoteResource
+    {
+        return $this->creditNotes ??= new TenantCreditNoteResource($this->http);
+    }
+
+    /**
+     * Resource pour les factures des sub-tenants (create, submit, update, delete).
+     */
+    public function tenantInvoices(): TenantInvoiceResource
+    {
+        return $this->tenantInvoices ??= new TenantInvoiceResource($this->http);
+    }
+
+    /**
+     * Resource pour les factures directes des sub-tenants.
+     */
+    public function directInvoices(): TenantDirectInvoiceResource
+    {
+        return $this->directInvoices ??= new TenantDirectInvoiceResource($this->http);
+    }
+
+    /**
+     * Resource pour les factures entrantes des sub-tenants.
+     */
+    public function incomingInvoices(): TenantIncomingInvoiceResource
+    {
+        return $this->incomingInvoices ??= new TenantIncomingInvoiceResource($this->http);
     }
 
     /**
