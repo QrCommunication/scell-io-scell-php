@@ -11,6 +11,9 @@ SDK PHP officiel pour l'API Scell.io - Facturation electronique (Factur-X/UBL/CI
 
 - Facturation electronique conforme (Factur-X, UBL 2.1, UN/CEFACT CII)
 - Signature electronique simple (eIDAS EU-SES)
+- Gestion multi-tenant (sub-tenants, factures directes et entrantes)
+- Conformite fiscale NF525 (integrite, clotures, FEC, attestations)
+- Statistiques et facturation plateforme
 - Integration Laravel native avec auto-discovery
 - Builders fluent pour factures et signatures
 - Verification HMAC-SHA256 des webhooks
@@ -241,32 +244,150 @@ file_put_contents('facture.xml', $xmlContent);
 // Telecharger un document signe
 $download = $api->signatures()->download($signatureId, 'signed');
 
-// Piste d'audit
+// Piste d'audit (factures)
 $audit = $api->invoices()->auditTrail($invoiceId);
+foreach ($audit['data'] as $entry) {
+    echo "{$entry['action']}: {$entry['details']}";
+}
+
+// Piste d'audit (signatures)
+$audit = $api->signatures()->auditTrail($signatureId);
 foreach ($audit['data'] as $entry) {
     echo "{$entry['action']}: {$entry['details']}";
 }
 ```
 
-### Gerer les avoirs (Credit Notes) pour les sub-tenants
+### Gerer les sub-tenants
 
 ```php
-// Lister les avoirs d'un sub-tenant
-$creditNotes = $client->tenantCreditNotes()->list($subTenantId, [
+// Lister les sub-tenants
+$subTenants = $api->subTenants()->list(['per_page' => 50]);
+
+foreach ($subTenants->data as $subTenant) {
+    echo "{$subTenant->name} ({$subTenant->siret})";
+}
+
+// Creer un sub-tenant
+$subTenant = $api->subTenants()->create([
+    'external_id' => 'CLIENT-001',
+    'name' => 'Mon Client SARL',
+    'siret' => '12345678901234',
+    'email' => 'contact@client.fr',
+    'address_line1' => '1 rue de la Paix',
+    'postal_code' => '75001',
+    'city' => 'Paris',
+]);
+
+// Rechercher par ID externe
+$subTenant = $api->subTenants()->findByExternalId('CLIENT-001');
+
+// Mettre a jour
+$subTenant = $api->subTenants()->update($subTenantId, [
+    'email' => 'nouveau@email.fr',
+]);
+```
+
+### Factures pour les sub-tenants
+
+```php
+// Creer une facture pour un sub-tenant
+$invoice = $api->tenantInvoices()->createForSubTenant($subTenantId, [
+    'direction' => 'outgoing',
+    'output_format' => 'facturx',
+    'issue_date' => '2026-01-26',
+    'seller' => [...],
+    'buyer' => [...],
+    'lines' => [...],
+]);
+
+// Soumettre pour traitement
+$api->tenantInvoices()->submit($invoiceId);
+
+// Factures directes (sans sub-tenant)
+$invoice = $api->directInvoices()->create([...]);
+
+// Operations en masse
+$api->directInvoices()->bulkCreate([...]);
+$api->directInvoices()->bulkSubmit([$id1, $id2, $id3]);
+
+// Factures entrantes (fournisseurs)
+$incoming = $api->incomingInvoices()->listForSubTenant($subTenantId, [
+    'status' => 'received',
+]);
+
+// Accepter / Rejeter / Marquer comme payee
+$api->incomingInvoices()->accept($invoiceId);
+$api->incomingInvoices()->reject($invoiceId, 'Montant incorrect');
+$api->incomingInvoices()->markPaid($invoiceId, 'VIR-2026-001');
+```
+
+### Conformite fiscale (NF525)
+
+```php
+// Dashboard de conformite
+$compliance = $api->fiscal()->compliance();
+
+// Verification d'integrite
+$report = $api->fiscal()->integrity();
+$history = $api->fiscal()->integrityHistory(['per_page' => 25]);
+
+// Clotures
+$closings = $api->fiscal()->closings();
+$api->fiscal()->performDailyClosing();
+
+// Export FEC
+$fec = $api->fiscal()->fecExport(['year' => 2025]);
+
+// Attestation annuelle
+$attestation = $api->fiscal()->attestation(2025);
+$pdf = $api->fiscal()->attestationDownload(2025);
+
+// Ecritures comptables
+$entries = $api->fiscal()->entries(['per_page' => 100]);
+
+// Ancres d'integrite
+$anchors = $api->fiscal()->anchors();
+
+// Regles fiscales
+$rules = $api->fiscal()->rules();
+$api->fiscal()->createRule([...]);
+```
+
+### Statistiques et facturation
+
+```php
+// Vue d'ensemble
+$stats = $api->stats()->overview();
+
+// Statistiques mensuelles
+$monthly = $api->stats()->monthly(['year' => 2025]);
+
+// Stats par sub-tenant
+$stats = $api->stats()->subTenantOverview($subTenantId);
+
+// Facturation plateforme
+$invoices = $api->billing()->invoices();
+$usage = $api->billing()->usage();
+$transactions = $api->billing()->transactions();
+
+// Recharger le solde
+$api->billing()->topUp(['amount' => 100.00]);
+```
+
+### Gerer les avoirs (Credit Notes)
+
+```php
+// Lister les avoirs
+$creditNotes = $api->creditNotes()->list($subTenantId, [
     'status' => 'draft',
     'per_page' => 25,
 ]);
 
-foreach ($creditNotes['data'] as $creditNote) {
-    echo "{$creditNote['number']}: {$creditNote['total_ttc']} EUR";
-}
-
-// Verifier les montants creditables pour une facture
-$remaining = $client->tenantCreditNotes()->remainingCreditable($invoiceId);
-echo "Montant restant creditable: {$remaining['data']['remaining_amount']} EUR";
+// Verifier les montants creditables
+$remaining = $api->creditNotes()->remainingCreditable($invoiceId);
 
 // Creer un avoir partiel
-$creditNote = $client->tenantCreditNotes()->create($subTenantId, [
+$creditNote = $api->creditNotes()->create($subTenantId, [
     'invoice_id' => $invoiceId,
     'reason' => 'Remise commerciale',
     'type' => 'partial',
@@ -280,29 +401,19 @@ $creditNote = $client->tenantCreditNotes()->create($subTenantId, [
     ],
 ]);
 
-echo "Avoir cree: {$creditNote['data']['id']}";
-
-// Creer un avoir total (annulation complete)
-$creditNote = $client->tenantCreditNotes()->create($subTenantId, [
+// Creer un avoir total
+$creditNote = $api->creditNotes()->create($subTenantId, [
     'invoice_id' => $invoiceId,
     'reason' => 'Annulation de la commande',
     'type' => 'full',
 ]);
 
-// Recuperer un avoir
-$creditNote = $client->tenantCreditNotes()->get($creditNoteId);
-echo "Statut: {$creditNote['data']['status']}";
+// Envoyer l'avoir
+$api->creditNotes()->send($creditNoteId);
 
-// Envoyer (valider et transmettre) l'avoir
-$result = $client->tenantCreditNotes()->send($creditNoteId);
-echo "Avoir envoye: {$result['message']}";
-
-// Telecharger le PDF de l'avoir
-$pdfContent = $client->tenantCreditNotes()->download($creditNoteId);
-file_put_contents('avoir.pdf', $pdfContent);
-
-// Supprimer un avoir en brouillon
-$client->tenantCreditNotes()->delete($creditNoteId);
+// Telecharger le PDF
+$pdf = $api->creditNotes()->download($creditNoteId);
+file_put_contents('avoir.pdf', $pdf);
 ```
 
 ## Integration Laravel
@@ -497,13 +608,13 @@ DisputeType::DeliveryDispute;   // Litige sur la livraison
 DisputeType::Other;             // Autre
 
 // Statut de facture
-InvoiceStatus::Paid;  // Nouveau v1.2.0 - Facture payee
+InvoiceStatus::Paid;  // Facture payee
 
 // Evenements webhook
 WebhookEvent::InvoiceValidated;
-WebhookEvent::InvoiceIncomingReceived;  // Nouveau v1.1.0
-WebhookEvent::InvoiceIncomingAccepted;  // Nouveau v1.1.0
-WebhookEvent::InvoiceIncomingPaid;      // Nouveau v1.2.0
+WebhookEvent::InvoiceIncomingReceived;
+WebhookEvent::InvoiceIncomingAccepted;
+WebhookEvent::InvoiceIncomingPaid;
 WebhookEvent::SignatureCompleted;
 WebhookEvent::BalanceLow;
 ```
@@ -545,7 +656,7 @@ composer check
 
 ## API Reference
 
-### Resources
+### ScellClient (Bearer token)
 
 | Resource | Description |
 |----------|-------------|
@@ -554,7 +665,21 @@ composer check
 | `companies()` | Gestion des entreprises |
 | `balance()` | Consultation du solde |
 | `webhooks()` | Gestion des webhooks |
-| `tenantCreditNotes()` | Gestion des avoirs pour les sub-tenants |
+
+### ScellApiClient (API Key)
+
+| Resource | Description |
+|----------|-------------|
+| `invoices()` | Factures (builder, download, audit trail) |
+| `signatures()` | Signatures (builder, download, audit trail) |
+| `subTenants()` | Gestion des sub-tenants (CRUD, recherche) |
+| `tenantInvoices()` | Factures des sub-tenants (create, submit, update) |
+| `directInvoices()` | Factures directes (create, bulk operations) |
+| `incomingInvoices()` | Factures entrantes (accept, reject, markPaid) |
+| `creditNotes()` | Avoirs (create, send, download) |
+| `fiscal()` | Conformite fiscale NF525 (integrite, clotures, FEC) |
+| `stats()` | Statistiques (overview, monthly, par sub-tenant) |
+| `billing()` | Facturation plateforme (invoices, usage, top-up) |
 
 ### Webhook Events
 

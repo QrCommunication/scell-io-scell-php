@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-03-12
+
+### Added
+
+- **ScellApiClient Resources**: Full multi-tenant support with 8 new resource accessors: `subTenants()`, `fiscal()`, `stats()`, `billing()`, `creditNotes()`, `tenantInvoices()`, `directInvoices()`, `incomingInvoices()`
+- **Sub-Tenants**: `SubTenantResource` with CRUD operations and `findByExternalId()`
+- **Tenant Invoices**: `TenantInvoiceResource` for managing sub-tenant invoices (create, submit, update, delete, status)
+- **Direct Invoices**: `TenantDirectInvoiceResource` for tenant-level invoices with bulk operations (`bulkCreate`, `bulkSubmit`, `bulkStatus`)
+- **Incoming Invoices**: `TenantIncomingInvoiceResource` for supplier invoices (create, accept, reject, markPaid)
+- **Signature Audit Trail**: `SignatureResource::auditTrail()` for retrieving signature action history
+
+### Fixed
+
+- Corrected API key prefix from `sk_` to `tk_` across documentation and examples
+
 ## [1.4.0] - 2026-02-08
 
 ### Added
