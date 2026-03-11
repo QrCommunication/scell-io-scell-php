@@ -35,7 +35,9 @@ class FiscalResource
         return FiscalIntegrityReport::fromArray($response['data']);
     }
 
-    // GET tenant/fiscal/integrity/history
+    /**
+     * @return PaginatedResult<FiscalIntegrityReport>
+     */
     public function integrityHistory(array $params = []): PaginatedResult
     {
         $response = $this->http->get('tenant/fiscal/integrity/history', $params);
@@ -49,7 +51,9 @@ class FiscalResource
         return FiscalIntegrityReport::fromArray($response['data']);
     }
 
-    // GET tenant/fiscal/closings
+    /**
+     * @return PaginatedResult<FiscalClosingSummary>
+     */
     public function closings(array $params = []): PaginatedResult
     {
         $response = $this->http->get('tenant/fiscal/closings', $params);
@@ -81,7 +85,9 @@ class FiscalResource
         return $this->http->getRaw("tenant/fiscal/attestation/{$year}/download");
     }
 
-    // GET tenant/fiscal/entries
+    /**
+     * @return PaginatedResult<FiscalEntry>
+     */
     public function entries(array $params = []): PaginatedResult
     {
         $response = $this->http->get('tenant/fiscal/entries', $params);
@@ -107,14 +113,18 @@ class FiscalResource
         return $this->http->post('tenant/fiscal/kill-switch/deactivate');
     }
 
-    // GET tenant/fiscal/anchors
+    /**
+     * @return PaginatedResult<FiscalAnchor>
+     */
     public function anchors(array $params = []): PaginatedResult
     {
         $response = $this->http->get('tenant/fiscal/anchors', $params);
         return PaginatedResult::fromArray($response, fn(array $data) => FiscalAnchor::fromArray($data));
     }
 
-    // GET tenant/fiscal/rules
+    /**
+     * @return PaginatedResult<FiscalRule>
+     */
     public function rules(array $params = []): PaginatedResult
     {
         $response = $this->http->get('tenant/fiscal/rules', $params);
@@ -128,7 +138,9 @@ class FiscalResource
         return FiscalRule::fromArray($response['data']);
     }
 
-    // GET tenant/fiscal/rules/{key}/history
+    /**
+     * @return PaginatedResult<FiscalRule>
+     */
     public function ruleHistory(string $key, array $params = []): PaginatedResult
     {
         $response = $this->http->get("tenant/fiscal/rules/{$key}/history", $params);

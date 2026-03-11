@@ -16,6 +16,9 @@ class BillingResource
         private readonly HttpClient $http
     ) {}
 
+    /**
+     * @return PaginatedResult<BillingInvoice>
+     */
     public function invoices(array $params = []): PaginatedResult
     {
         $response = $this->http->get('tenant/billing/invoices', $params);
@@ -49,6 +52,9 @@ class BillingResource
         return $this->http->post('tenant/billing/top-up/confirm', $data);
     }
 
+    /**
+     * @return PaginatedResult<BillingTransaction>
+     */
     public function transactions(array $params = []): PaginatedResult
     {
         $response = $this->http->get('tenant/billing/transactions', $params);
