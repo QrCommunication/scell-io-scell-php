@@ -148,6 +148,105 @@ class TenantDirectCreditNoteResource
     }
 
     /**
+     * Recupere un avoir par son ID.
+     *
+     * @param string $creditNoteId UUID de l'avoir
+     *
+     * @example
+     * ```php
+     * $creditNote = $resource->get('credit-note-uuid');
+     * echo "Avoir: {$creditNote->creditNoteNumber}";
+     * ```
+     */
+    public function get(string $creditNoteId): CreditNote
+    {
+        $response = $this->http->get("tenant/credit-notes/{$creditNoteId}");
+
+        return CreditNote::fromArray($response['data']);
+    }
+
+    /**
+     * Modifie un avoir en brouillon.
+     *
+     * Seuls les avoirs au statut 'draft' peuvent etre modifies.
+     *
+     * @param string $creditNoteId UUID de l'avoir
+     * @param array{
+     *     reason?: string,
+     *     items?: array[],
+     *     external_id?: string,
+     *     metadata?: array
+     * } $data Donnees a modifier
+     *
+     * @example
+     * ```php
+     * $creditNote = $resource->update('credit-note-uuid', [
+     *     'reason' => 'Nouvelle raison du remboursement',
+     * ]);
+     * ```
+     */
+    public function update(string $creditNoteId, array $data): CreditNote
+    {
+        $response = $this->http->put("tenant/credit-notes/{$creditNoteId}", $data);
+
+        return CreditNote::fromArray($response['data']);
+    }
+
+    /**
+     * Envoie (valide et transmet) un avoir.
+     *
+     * Cette action finalise l'avoir et le transmet au destinataire.
+     * L'avoir ne pourra plus etre modifie apres cette action.
+     *
+     * @param string $creditNoteId UUID de l'avoir
+     * @return array{data: array, message?: string}
+     *
+     * @example
+     * ```php
+     * $result = $resource->send('credit-note-uuid');
+     * echo "Avoir envoye: {$result['message']}";
+     * ```
+     */
+    public function send(string $creditNoteId): array
+    {
+        return $this->http->post("tenant/credit-notes/{$creditNoteId}/send");
+    }
+
+    /**
+     * Telecharge le PDF d'un avoir.
+     *
+     * @param string $creditNoteId UUID de l'avoir
+     * @return string Contenu binaire du PDF
+     *
+     * @example
+     * ```php
+     * $pdf = $resource->download('credit-note-uuid');
+     * file_put_contents('avoir.pdf', $pdf);
+     * ```
+     */
+    public function download(string $creditNoteId): string
+    {
+        return $this->http->getRaw("tenant/credit-notes/{$creditNoteId}/download");
+    }
+
+    /**
+     * Recupere les montants restants creditables pour une facture.
+     *
+     * @param string $invoiceId UUID de la facture
+     * @return array{data: array{total_ht: float, total_tax: float, total_ttc: float, lines: array}}
+     *
+     * @example
+     * ```php
+     * $remaining = $resource->remainingCreditable('invoice-uuid');
+     * echo "Montant restant: {$remaining['data']['total_ttc']} EUR";
+     * ```
+     */
+    public function remainingCreditable(string $invoiceId): array
+    {
+        return $this->http->get("tenant/invoices/{$invoiceId}/remaining-creditable");
+    }
+
+    /**
      * Normalise les filtres de liste.
      *
      * @param array<string, mixed> $filters

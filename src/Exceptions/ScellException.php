@@ -59,6 +59,7 @@ class ScellException extends Exception
         // Determiner le type d'exception selon le code HTTP
         return match (true) {
             $statusCode === 401 => new AuthenticationException($message, $statusCode, null, $scellCode, $body, $statusCode),
+            $statusCode === 402 => new InsufficientBalanceException($message, $body['current_balance'] ?? null, $body['required_amount'] ?? null, $body),
             $statusCode === 422 => ValidationException::fromResponse($response),
             $statusCode === 429 => RateLimitException::fromResponse($response),
             default => new self($message, $statusCode, null, $scellCode, $body, $statusCode),

@@ -12,6 +12,7 @@ use Scell\Sdk\Resources\SignatureResource;
 use Scell\Sdk\Resources\TenantCreditNoteResource;
 use Scell\Sdk\Resources\WebhookResource;
 use Scell\Sdk\Resources\ApiKeyResource;
+use Scell\Sdk\Resources\CreditNoteResource;
 
 /**
  * Client principal du SDK Scell.io (authentification Bearer token).
@@ -50,6 +51,7 @@ class ScellClient
     private ?WebhookResource $webhooks = null;
     private ?TenantCreditNoteResource $tenantCreditNotes = null;
     private ?ApiKeyResource $apiKeys = null;
+    private ?CreditNoteResource $creditNotes = null;
 
     /**
      * Cree une instance du client avec Bearer token.
@@ -121,6 +123,14 @@ class ScellClient
     public function tenantCreditNotes(): TenantCreditNoteResource
     {
         return $this->tenantCreditNotes ??= new TenantCreditNoteResource($this->http);
+    }
+
+    /**
+     * Resource pour les avoirs (dashboard).
+     */
+    public function creditNotes(): CreditNoteResource
+    {
+        return $this->creditNotes ??= new CreditNoteResource($this->http);
     }
 
     /**

@@ -244,6 +244,9 @@ file_put_contents('facture.xml', $xmlContent);
 // Telecharger un document signe
 $download = $api->signatures()->download($signatureId, 'signed');
 
+// Convertir une facture vers un autre format
+$api->invoices()->convert($invoiceId, OutputFormat::UBL);
+
 // Piste d'audit (factures)
 $audit = $api->invoices()->auditTrail($invoiceId);
 foreach ($audit['data'] as $entry) {
@@ -372,6 +375,9 @@ $transactions = $api->billing()->transactions();
 
 // Recharger le solde
 $api->billing()->topUp(['amount' => 100.00]);
+
+// Confirmer un rechargement (apres validation paiement)
+$api->billing()->confirmTopUp(['payment_intent_id' => 'pi_...']);
 ```
 
 ### Gerer les avoirs (Credit Notes)
@@ -681,6 +687,74 @@ composer check
 | `stats()` | Statistiques (overview, monthly, par sub-tenant) |
 | `billing()` | Facturation plateforme (invoices, usage, top-up) |
 
+### ScellTenantClient (Multi-Tenant Partner)
+
+```php
+use Scell\Sdk\ScellTenantClient;
+
+// Create client with tenant key
+$tenant = ScellTenantClient::create('tk_live_...');
+
+// Sandbox mode
+$tenant = ScellTenantClient::sandbox('tk_test_...');
+
+// Profile management
+$profile = $tenant->me();
+$tenant->update(['company_name' => 'New Name']);
+$balance = $tenant->balance();
+$stats = $tenant->stats();
+$result = $tenant->regenerateKey();
+
+// Sub-Tenants
+$subTenants = $tenant->subTenants()->list();
+$sub = $tenant->subTenants()->create([...]);
+
+// Direct Invoices (without sub-tenant scope)
+$invoices = $tenant->directInvoices()->list();
+$invoice = $tenant->directInvoices()->create([...]);
+$tenant->directInvoices()->bulkCreate([...]);
+$tenant->directInvoices()->bulkSubmit([...]);
+
+// Direct Credit Notes
+$notes = $tenant->directCreditNotes()->list();
+$note = $tenant->directCreditNotes()->create([...]);
+
+// Per sub-tenant invoices
+$subInvoices = $tenant->invoices()->listForSubTenant($subId);
+$invoice = $tenant->invoices()->createForSubTenant($subId, [...]);
+
+// Incoming invoices
+$incoming = $tenant->incomingInvoices()->listForSubTenant($subId);
+$tenant->incomingInvoices()->accept($invoiceId);
+
+// Fiscal compliance (NF525)
+$compliance = $tenant->fiscal()->compliance();
+$integrity = $tenant->fiscal()->integrity();
+$attestation = $tenant->fiscal()->attestation(2025);
+
+// Billing
+$billingInvoices = $tenant->billing()->invoices();
+$usage = $tenant->billing()->usage();
+
+// Detailed stats
+$overview = $tenant->detailedStats()->overview();
+```
+
+#### ScellTenantClient API Reference
+
+| Resource | Methods |
+|----------|---------|
+| Direct methods | `me()`, `update(data)`, `balance()`, `stats()`, `regenerateKey()` |
+| `subTenants()` | `list()`, `create(data)`, `get(id)`, `update(id, data)`, `delete(id)`, `findByExternalId(externalId)` |
+| `directInvoices()` | `list(filters)`, `create(data)`, `bulkCreate(invoices)`, `bulkSubmit(ids)`, `bulkStatus(ids)` |
+| `directCreditNotes()` | `list(filters)`, `create(data)`, `get(id)`, `send(id)`, `update(id, data)`, `download(id)`, `remainingCreditable(invoiceId)` |
+| `invoices()` | `listForSubTenant(subId, filters)`, `createForSubTenant(subId, data)`, `get(id)`, `update(id, data)`, `delete(id)`, `submit(id)`, `status(id)`, `remainingCreditable(id)` |
+| `creditNotes()` | `listForSubTenant(subId, filters)`, `createForSubTenant(subId, data)`, `get(id)`, `update(id, data)`, `delete(id)`, `send(id)`, `download(id)`, `remainingCreditable(invoiceId)` |
+| `incomingInvoices()` | `listForSubTenant(subId, filters)`, `create(subId, data)`, `get(id)`, `accept(id, data)`, `reject(id, reason, code)`, `markPaid(id, ref, data)` |
+| `fiscal()` | `compliance()`, `integrity(params)`, `integrityHistory(params)`, `integrityForDate(date)`, `closings(params)`, `performDailyClosing(data)`, `fecExport(params)`, `attestation(year)`, `attestationDownload(year)`, `entries(params)`, `killSwitchStatus()`, `killSwitchActivate(data)`, `killSwitchDeactivate()`, `anchors(params)`, `rules(params)`, `ruleDetail(key)`, `ruleHistory(key, params)`, `createRule(data)`, `updateRule(id, data)`, `exportRules(params)`, `replayRules(data)`, `forensicExport(params)` |
+| `billing()` | `invoices(params)`, `showInvoice(id)`, `downloadInvoice(id)`, `usage(params)`, `topUp(data)`, `confirmTopUp(data)`, `transactions(params)` |
+| `detailedStats()` | `overview(params)`, `monthly(params)`, `subTenantOverview(subId, params)` |
+
 ### Webhook Events
 
 | Event | Description |
@@ -688,17 +762,22 @@ composer check
 | `invoice.created` | Facture creee |
 | `invoice.validated` | Facture validee et conforme |
 | `invoice.transmitted` | Facture transmise au PDP |
+| `invoice.accepted` | Facture acceptee par le destinataire |
 | `invoice.rejected` | Facture rejetee |
+| `invoice.error` | Erreur de traitement de la facture |
 | `invoice.incoming.received` | Facture entrante recue |
 | `invoice.incoming.accepted` | Facture entrante acceptee |
 | `invoice.incoming.rejected` | Facture entrante rejetee |
 | `invoice.incoming.disputed` | Facture entrante contestee |
 | `invoice.incoming.paid` | Facture entrante payee |
 | `signature.created` | Signature creee |
+| `signature.waiting` | Signature en attente des signataires |
 | `signature.signer_completed` | Un signataire a signe |
+| `signature.signed` | Tous les signataires ont signe |
 | `signature.completed` | Tous les signataires ont signe |
 | `signature.refused` | Signature refusee |
 | `signature.expired` | Signature expiree |
+| `signature.error` | Erreur de traitement de la signature |
 | `balance.low` | Solde bas (seuil configurable) |
 
 ## Requirements

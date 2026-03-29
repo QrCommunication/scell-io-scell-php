@@ -192,6 +192,17 @@ class InvoiceResource
     }
 
     /**
+     * Soumet une facture pour traitement.
+     *
+     * @param string $id UUID de la facture
+     * @return array{data: array, message?: string}
+     */
+    public function submit(string $id): array
+    {
+        return $this->http->post("invoices/{$id}/submit");
+    }
+
+    /**
      * Cree une facture avec le builder fluent.
      *
      * @return InvoiceBuilder

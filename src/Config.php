@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Scell\Sdk;
 
+use Scell\Sdk\Enums\Environment;
+
 /**
  * Configuration du SDK Scell.
  */
@@ -13,6 +15,11 @@ class Config
      * URL de base par defaut.
      */
     public const DEFAULT_BASE_URL = 'https://api.scell.io/api/v1';
+
+    /**
+     * URL de base sandbox.
+     */
+    public const SANDBOX_BASE_URL = 'https://sandbox.api.scell.io/api/v1';
 
     /**
      * Timeout par defaut en secondes.
@@ -42,6 +49,7 @@ class Config
         public readonly int $retryDelay = self::DEFAULT_RETRY_DELAY,
         public readonly bool $verifySsl = true,
         public readonly ?string $webhookSecret = null,
+        public readonly Environment $environment = Environment::Production,
     ) {}
 
     /**
@@ -49,14 +57,19 @@ class Config
      */
     public static function fromArray(array $config): self
     {
+        $env = $config['environment'] ?? 'production';
+        $environment = Environment::from($env);
+        $defaultUrl = $environment === Environment::Sandbox ? self::SANDBOX_BASE_URL : self::DEFAULT_BASE_URL;
+
         return new self(
-            baseUrl: $config['base_url'] ?? self::DEFAULT_BASE_URL,
+            baseUrl: $config['base_url'] ?? $defaultUrl,
             timeout: $config['timeout'] ?? $config['http']['timeout'] ?? self::DEFAULT_TIMEOUT,
             connectTimeout: $config['connect_timeout'] ?? $config['http']['connect_timeout'] ?? self::DEFAULT_CONNECT_TIMEOUT,
             retryAttempts: $config['retry_attempts'] ?? $config['http']['retry_attempts'] ?? self::DEFAULT_RETRY_ATTEMPTS,
             retryDelay: $config['retry_delay'] ?? $config['http']['retry_delay'] ?? self::DEFAULT_RETRY_DELAY,
             verifySsl: $config['verify_ssl'] ?? $config['http']['verify_ssl'] ?? true,
             webhookSecret: $config['webhook_secret'] ?? null,
+            environment: $environment,
         );
     }
 
@@ -65,7 +78,10 @@ class Config
      */
     public static function sandbox(): self
     {
-        return new self();
+        return new self(
+            baseUrl: self::SANDBOX_BASE_URL,
+            environment: Environment::Sandbox,
+        );
     }
 
     /**

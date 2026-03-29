@@ -21,6 +21,7 @@ use Scell\Sdk\Exceptions\ScellException;
  */
 class HttpClient
 {
+    public const SDK_VERSION = '1.5.0';
     private Client $client;
     private string $baseUrl;
     private ?string $bearerToken = null;
@@ -224,7 +225,7 @@ class HttpClient
         $headers = [
             'Accept' => 'application/json',
             'Content-Type' => 'application/json',
-            'User-Agent' => 'Scell-PHP-SDK/1.2.0',
+            'User-Agent' => 'Scell-PHP-SDK/' . self::SDK_VERSION,
         ];
 
         if ($this->bearerToken) {
