@@ -100,6 +100,67 @@ echo "Facture creee: {$invoice->id}";
 echo "Total TTC: {$invoice->totalTtc} EUR";
 ```
 
+### Facturation internationale
+
+Pour les parties non-francaises, le SIRET n'est pas requis. Utilisez les numeros de TVA pour les entreprises EU et `legal_id` avec un code de schema pour les entreprises hors-EU.
+
+#### Facture avec acheteur belge (EU)
+
+```php
+$invoice = $client->invoices()->create([
+    'invoice_number' => 'INV-2026-042',
+    'issue_date' => '2026-03-29',
+    'due_date' => '2026-04-28',
+    'currency' => 'EUR',
+    // Vendeur francais (SIRET requis)
+    'seller_siret' => '12345678901234',
+    'seller_name' => 'Ma Société SAS',
+    'seller_country' => 'FR',
+    'seller_vat_number' => 'FR12345678901',
+    'seller_address' => ['line1' => '10 rue de Paris', 'postal_code' => '75001', 'city' => 'Paris', 'country' => 'FR'],
+    // Acheteur belge (pas de SIRET, numero de TVA)
+    'buyer_name' => 'Entreprise Belge SPRL',
+    'buyer_country' => 'BE',
+    'buyer_vat_number' => 'BE0123456789',
+    'buyer_address' => ['line1' => '15 Avenue Louise', 'postal_code' => '1050', 'city' => 'Bruxelles', 'country' => 'BE'],
+    'lines' => [
+        ['description' => 'Consulting services', 'quantity' => 10, 'unit_price' => 150.00, 'vat_rate' => 0],
+    ],
+    'format' => 'ubl',
+]);
+```
+
+> **Note :** Pour les transactions B2B intra-communautaires (ex: FR -> BE, FR -> DE), le taux de TVA est generalement 0% via le mecanisme d'autoliquidation. L'acheteur comptabilise la TVA dans son propre pays.
+
+#### Facture avec acheteur UK (hors-EU)
+
+Pour les acheteurs hors-EU, utilisez `buyer_legal_id` et `buyer_legal_id_scheme` en plus du numero de TVA :
+
+```php
+$invoice = $client->invoices()->create([
+    'invoice_number' => 'INV-2026-044',
+    'issue_date' => '2026-03-29',
+    'due_date' => '2026-04-28',
+    'currency' => 'GBP',
+    'seller_siret' => '12345678901234',
+    'seller_name' => 'Ma Société SAS',
+    'seller_country' => 'FR',
+    'seller_vat_number' => 'FR12345678901',
+    'seller_address' => ['line1' => '10 rue de Paris', 'postal_code' => '75001', 'city' => 'Paris', 'country' => 'FR'],
+    // Acheteur UK — legal_id avec schema
+    'buyer_name' => 'British Ltd',
+    'buyer_country' => 'GB',
+    'buyer_vat_number' => 'GB123456789',
+    'buyer_legal_id' => '12345678',
+    'buyer_legal_id_scheme' => '0088',
+    'buyer_address' => ['line1' => '20 Baker Street', 'postal_code' => 'W1U 3BW', 'city' => 'London', 'country' => 'GB'],
+    'lines' => [
+        ['description' => 'Design services', 'quantity' => 5, 'unit_price' => 200.00, 'vat_rate' => 0],
+    ],
+    'format' => 'ubl',
+]);
+```
+
 ### Creer une signature
 
 ```php
