@@ -6,7 +6,7 @@
 Scell.io is a B2B micro-SaaS platform providing:
 - Electronic invoicing compliant with French and EU standards (Factur-X PDF/A-3, UBL 2.1, UN/CEFACT CII)
 - Simple electronic signatures (eIDAS EU-SES) with OTP authentication (email/SMS)
-- NF525 fiscal compliance (immutable ledger, SHA-256 hash chain, daily closings, FEC export)
+- ISCA fiscal compliance (immutable ledger, SHA-256 hash chain, daily closings, FEC export)
 - Multi-tenant architecture for partner integrations (sub-tenants, direct invoices, incoming invoices)
 
 This SDK provides typed PHP 8.2+ clients, DTOs, enums, builders, webhook verification, and Laravel integration.
@@ -24,7 +24,7 @@ Where SLUG5 = first 5 characters of tenant slug (uppercase). Sequences reset mon
 
 The number is assigned:
 - At creation: temporary DRAFT number
-- At submit/send: definitive fiscal number (immutable per NF525)
+- At submit/send: definitive fiscal number (immutable per ISCA)
 
 ## Installation
 
@@ -643,7 +643,7 @@ Resource accessors:
     public function remainingCreditable(string $invoiceId): array
         // GET invoices/{invoiceId}/remaining-creditable
 
-### FiscalResource (NF525 Compliance)
+### FiscalResource (ISCA Compliance)
 
     Scell\Sdk\Resources\FiscalResource
 
@@ -719,6 +719,15 @@ Resource accessors:
 
     public function forensicExport(array $params = []): array
         // GET tenant/fiscal/forensic-export
+
+    public function downloadMeasuresRegister(): string
+        // GET tenant/fiscal/isca/measures-register/download
+
+    public function downloadTechnicalDossier(): string
+        // GET tenant/fiscal/isca/technical-dossier/download
+
+    public function downloadSelfAttestation(): string
+        // GET tenant/fiscal/isca/self-attestation/download
 
 ### BillingResource
 
@@ -1743,7 +1752,7 @@ Version 1.8.0 (current):
 - Full multi-tenant support (ScellTenantClient)
 - Direct invoices and credit notes (without sub-tenant scope)
 - Incoming invoices lifecycle (accept, reject, dispute, mark paid)
-- NF525 fiscal compliance (integrity, closings, FEC, attestation, kill-switch)
+- ISCA fiscal compliance (integrity, closings, FEC, attestation, kill-switch)
 - Billing and stats resources
 - International invoicing (non-FR parties, VAT numbers, legal IDs)
 - Webhook verification with HMAC-SHA256

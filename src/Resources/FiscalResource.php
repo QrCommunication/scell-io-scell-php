@@ -178,4 +178,28 @@ class FiscalResource
     {
         return $this->http->get('tenant/fiscal/forensic-export', $params);
     }
+
+    /**
+     * Telecharge le registre des mesures ISCA en PDF.
+     */
+    public function downloadMeasuresRegister(): string
+    {
+        return $this->http->getRaw('tenant/fiscal/isca/measures-register/download');
+    }
+
+    /**
+     * Telecharge le dossier technique ISCA en PDF.
+     */
+    public function downloadTechnicalDossier(): string
+    {
+        return $this->http->getRaw('tenant/fiscal/isca/technical-dossier/download');
+    }
+
+    /**
+     * Telecharge l'auto-attestation ISCA en PDF.
+     */
+    public function downloadSelfAttestation(): string
+    {
+        return $this->http->getRaw('tenant/fiscal/isca/self-attestation/download');
+    }
 }

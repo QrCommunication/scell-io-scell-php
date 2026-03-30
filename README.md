@@ -12,7 +12,7 @@ SDK PHP officiel pour l'API Scell.io - Facturation electronique (Factur-X/UBL/CI
 - Facturation electronique conforme (Factur-X, UBL 2.1, UN/CEFACT CII)
 - Signature electronique simple (eIDAS EU-SES)
 - Gestion multi-tenant (sub-tenants, factures directes et entrantes)
-- Conformite fiscale NF525 (integrite, clotures, FEC, attestations)
+- Conformite fiscale ISCA (integrite, clotures, FEC, attestations)
 - Statistiques et facturation plateforme
 - Integration Laravel native avec auto-discovery
 - Builders fluent pour factures et signatures
@@ -384,7 +384,7 @@ $api->incomingInvoices()->reject($invoiceId, 'Montant incorrect');
 $api->incomingInvoices()->markPaid($invoiceId, 'VIR-2026-001');
 ```
 
-### Conformite fiscale (NF525)
+### Conformite fiscale (ISCA)
 
 ```php
 // Dashboard de conformite
@@ -414,6 +414,22 @@ $anchors = $api->fiscal()->anchors();
 // Regles fiscales
 $rules = $api->fiscal()->rules();
 $api->fiscal()->createRule([...]);
+```
+
+### Documents de conformité ISCA
+
+```php
+// Registre des mesures
+$pdf = $api->fiscal()->downloadMeasuresRegister();
+file_put_contents('registre-mesures-isca.pdf', $pdf);
+
+// Dossier technique
+$pdf = $api->fiscal()->downloadTechnicalDossier();
+file_put_contents('dossier-technique-isca.pdf', $pdf);
+
+// Auto-attestation ISCA
+$pdf = $api->fiscal()->downloadSelfAttestation();
+file_put_contents('auto-attestation-isca.pdf', $pdf);
 ```
 
 ### Statistiques et facturation
@@ -741,7 +757,7 @@ composer check
 | `directInvoices()` | Factures directes (create, bulk operations) |
 | `incomingInvoices()` | Factures entrantes (accept, reject, markPaid) |
 | `creditNotes()` | Avoirs (create, send, download) |
-| `fiscal()` | Conformite fiscale NF525 (integrite, clotures, FEC) |
+| `fiscal()` | Conformite fiscale ISCA (integrite, clotures, FEC) |
 | `stats()` | Statistiques (overview, monthly, par sub-tenant) |
 | `billing()` | Facturation plateforme (invoices, usage, top-up) |
 
@@ -785,7 +801,7 @@ $invoice = $tenant->invoices()->createForSubTenant($subId, [...]);
 $incoming = $tenant->incomingInvoices()->listForSubTenant($subId);
 $tenant->incomingInvoices()->accept($invoiceId);
 
-// Fiscal compliance (NF525)
+// Fiscal compliance (ISCA)
 $compliance = $tenant->fiscal()->compliance();
 $integrity = $tenant->fiscal()->integrity();
 $attestation = $tenant->fiscal()->attestation(2025);
