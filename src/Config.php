@@ -18,8 +18,9 @@ class Config
 
     /**
      * URL de base sandbox.
+     * Sandbox is determined by key prefix (sk_test_*), not by a separate domain.
      */
-    public const SANDBOX_BASE_URL = 'https://sandbox.api.scell.io/api/v1';
+    public const SANDBOX_BASE_URL = 'https://api.scell.io/api/v1';
 
     /**
      * Timeout par defaut en secondes.
