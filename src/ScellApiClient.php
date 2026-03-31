@@ -17,10 +17,12 @@ use Scell\Sdk\Resources\TenantIncomingInvoiceResource;
 use Scell\Sdk\Resources\TenantInvoiceResource;
 
 /**
- * Client API Scell.io (authentification par API Key).
+ * API Client for server-to-server integration.
+ * Uses X-API-Key header with sk_live_* or sk_test_* keys.
  *
- * Utilise ce client pour les integrations serveur-a-serveur (backend).
- * Les operations passent par les routes /api/v1 avec X-API-Key header.
+ * Provides access to both legacy invoice/signature endpoints
+ * and tenant management endpoints. For dedicated tenant operations,
+ * prefer ScellTenantClient which uses X-Tenant-Key header.
  *
  * @example
  * ```php

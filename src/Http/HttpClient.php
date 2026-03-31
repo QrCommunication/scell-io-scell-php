@@ -157,12 +157,15 @@ class HttpClient
     /**
      * Effectue une requete HTTP.
      *
+     * Note: paths are normalized by ltrim() to handle both formats (/path and path)
+     *
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      * @throws ScellException
      */
     private function request(string $method, string $path, array $options = []): array
     {
+        // Normalize path: ltrim removes leading slash, then re-add for consistency with baseUrl
         $url = $this->baseUrl . '/' . ltrim($path, '/');
 
         $options[RequestOptions::HEADERS] = array_merge(
