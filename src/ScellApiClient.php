@@ -8,6 +8,7 @@ use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\BillingResource;
 use Scell\Sdk\Resources\FiscalResource;
 use Scell\Sdk\Resources\InvoiceResource;
+use Scell\Sdk\Resources\OnboardingResource;
 use Scell\Sdk\Resources\SignatureResource;
 use Scell\Sdk\Resources\StatsResource;
 use Scell\Sdk\Resources\SubTenantResource;
@@ -62,6 +63,7 @@ class ScellApiClient
     private ?TenantInvoiceResource $tenantInvoices = null;
     private ?TenantDirectInvoiceResource $directInvoices = null;
     private ?TenantIncomingInvoiceResource $incomingInvoices = null;
+    private ?OnboardingResource $onboarding = null;
 
     /**
      * Cree une instance du client API.
@@ -197,6 +199,14 @@ class ScellApiClient
     public function incomingInvoices(): TenantIncomingInvoiceResource
     {
         return $this->incomingInvoices ??= new TenantIncomingInvoiceResource($this->http);
+    }
+
+    /**
+     * Resource pour l'onboarding via SuperPDP OAuth2.
+     */
+    public function onboarding(): OnboardingResource
+    {
+        return $this->onboarding ??= new OnboardingResource($this->http);
     }
 
     /**

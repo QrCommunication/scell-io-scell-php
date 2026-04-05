@@ -1,7 +1,7 @@
 {
     "name": "scell/sdk",
     "description": "SDK PHP officiel pour l'API Scell.io - Facturation electronique (Factur-X/UBL/CII) et signature electronique (eIDAS EU-SES)",
-    "version": "1.6.1",
+    "version": "1.7.0",
     "keywords": ["scell", "facturx", "ubl", "cii", "eidas", "signature", "invoice", "api", "sdk", "france", "b2b", "electronic-invoice"],
     "homepage": "https://scell.io",
     "license": "MIT",
