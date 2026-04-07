@@ -1,5 +1,5 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 1.8.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 1.11.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
 
 ## Overview
 
@@ -66,7 +66,7 @@ Static factory methods:
 ### Environment Variables
 
     SCELL_BASE_URL=https://api.scell.io/api/v1
-    SCELL_API_KEY=sk_live_...
+    SCELL_API_KEY=tk_live_...
     SCELL_BEARER_TOKEN=eyJ...
     SCELL_WEBHOOK_SECRET=whsec_...
 
@@ -113,11 +113,11 @@ $client->onboarding()->createSession(array $input): OnboardingSession
 $client->onboarding()->getSession(string $sessionId): OnboardingSession
   GET /onboarding/sessions/:id
 
-$client->onboarding()->getSuperPDPAuthorizeUrl(array $input): array
-  POST /onboarding/superpdp/authorize
+$client->onboarding()->getSuperPDPAuthorizeUrl(string $sessionId): array
+  GET /onboarding/superpdp/authorize?session_id=:sessionId
   Returns: ['authorize_url' => string, 'state' => string]
 
-$client->onboarding()->superpdpCallback(array $input): array
+$client->onboarding()->superpdpCallback(string $sessionId, string $code, string $state): array
   POST /onboarding/superpdp/callback
   Returns: ['success' => bool, 'authorization_code' => string, 'tenant' => [...]]
 
@@ -126,7 +126,7 @@ $client->onboarding()->superpdpCallback(array $input): array
 ```php
 use Scell\Sdk\ScellApiClient;
 
-$api = ScellApiClient::withApiKey('sk_live_...');
+$api = ScellApiClient::withApiKey('tk_live_...');
 
 // Step 1: Create a session
 $session = $api->onboarding()->createSession([
@@ -135,17 +135,15 @@ $session = $api->onboarding()->createSession([
 ]);
 
 // Step 2: Get SuperPDP authorize URL
-$auth = $api->onboarding()->getSuperPDPAuthorizeUrl([
-    'session_id' => $session['id'],
-]);
+$auth = $api->onboarding()->getSuperPDPAuthorizeUrl($session->id);
 // $auth['authorize_url'] — open this in a popup on the frontend
 
-// Step 4: Backend callback (SuperPDP redirects back with code + state)
-$result = $api->onboarding()->superpdpCallback([
-    'session_id' => $session['id'],
-    'code'       => $request->input('code'),
-    'state'      => $request->input('state'),
-]);
+// Step 3: Backend callback (SuperPDP redirects back with code + state)
+$result = $api->onboarding()->superpdpCallback(
+    sessionId: $session->id,
+    code: $request->input('code'),
+    state: $request->input('state'),
+);
 
 if ($result['success']) {
     $tenant = $result['tenant'];
@@ -157,8 +155,8 @@ if ($result['success']) {
 
     Scell\Sdk\Http\HttpClient
 
-SDK Version constant: HttpClient::SDK_VERSION = '1.8.0'
-User-Agent header: Scell-PHP-SDK/1.8.0
+SDK Version constant: HttpClient::SDK_VERSION = '1.11.0'
+User-Agent header: Scell-PHP-SDK/1.11.0
 Built on Guzzle 7 with automatic retry (exponential backoff).
 
 Methods:
@@ -1721,7 +1719,7 @@ The SDK auto-registers its service provider via composer.json extra.laravel conf
 
 ### Environment Variables (.env)
 
-    SCELL_API_KEY=sk_live_...
+    SCELL_API_KEY=tk_live_...
     SCELL_WEBHOOK_SECRET=whsec_...
 
 ### Facades

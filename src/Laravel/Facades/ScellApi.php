@@ -23,7 +23,6 @@ use Scell\Sdk\ScellApiClient;
  *
  * // Creer une facture
  * $invoice = ScellApi::invoices()->builder()
- *     ->invoiceNumber('FACT-2024-001')
  *     ->outgoing()
  *     ->facturX()
  *     ->issueDate(now())

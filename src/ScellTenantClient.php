@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scell\Sdk;
 
 use Scell\Sdk\Http\HttpClient;
+use Scell\Sdk\Resources\OnboardingResource;
 use Scell\Sdk\Resources\SubTenantResource;
 use Scell\Sdk\Resources\TenantDirectCreditNoteResource;
 use Scell\Sdk\Resources\TenantDirectInvoiceResource;
@@ -68,6 +69,7 @@ class ScellTenantClient
     private ?FiscalResource $fiscal = null;
     private ?BillingResource $billing = null;
     private ?StatsResource $detailedStats = null;
+    private ?OnboardingResource $onboarding = null;
 
     /**
      * Cree une instance du client multi-tenant.
@@ -359,6 +361,14 @@ class ScellTenantClient
     public function detailedStats(): StatsResource
     {
         return $this->detailedStats ??= new StatsResource($this->http);
+    }
+
+    /**
+     * Resource pour l'onboarding via SuperPDP OAuth2.
+     */
+    public function onboarding(): OnboardingResource
+    {
+        return $this->onboarding ??= new OnboardingResource($this->http);
     }
 
     /**

@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-04-07
+
+### Fixed
+
+- **Critical:** `InvoiceResource::normalizeCreatePayload()` no longer requires `invoice_number` — the field was dead code since v1.9.0 and caused an `undefined index` error when using the fluent builder
+
+### Changed
+
+- `InvoiceBuilder::invoiceNumber()` marked `@deprecated` — invoice numbers are server-generated since v1.9.0; the method is kept for backward compatibility but has no effect
+- NF525 terminology replaced with ISCA across all PHPDoc comments and documentation
+- `ScellTenantClient` now exposes `onboarding()` accessor returning `OnboardingResource`, consistent with `ScellApiClient`
+- `HttpClient::SDK_VERSION` bumped to `1.11.0`
+- PHPDoc examples updated: `sk_live_*`/`sk_test_*` replaced with `tk_live_*`/`tk_test_*` throughout
+
+## [1.10.0] - 2026-04-05
+
+### Added
+
+- **OnboardingResource**: SuperPDP OAuth2 Authorization Code flow for partner onboarding
+  - `createSession(array $data): OnboardingSession` — initialize onboarding session
+  - `getSession(string $sessionId): OnboardingSession` — retrieve session status
+  - `getSuperPDPAuthorizeUrl(string $sessionId): array` — get OAuth2 authorize URL (returns `authorize_url` + `state`)
+  - `superpdpCallback(string $sessionId, string $code, string $state): array` — exchange OAuth2 code and provision tenant
+- `ScellApiClient::onboarding()` accessor added
+
+### Added (DTO)
+
+- `OnboardingSession` DTO with full session fields
+
+## [1.9.2] - 2026-03-30
+
+### Added
+
+- **FiscalResource ISCA document downloads**: new download methods for ISCA compliance documents
+- Renamed all internal NF525 references to ISCA (conformite ISCA)
+
+## [1.9.0] - 2026-03-30
+
+### Changed
+
+- **Server-generated invoice numbers**: `invoice_number` is no longer accepted as input when creating invoices. Numbers are assigned automatically by Scell.io (DRAFT prefix at creation, fiscal number at submit)
+- `InvoiceBuilder::invoiceNumber()` is now a no-op (kept for backward compatibility)
+- README and llms.txt updated to reflect auto-numbering behavior
+
+## [1.8.0] - 2026-03-29
+
+### Added
+
+- **International invoicing**: optional SIRET, VAT number, and legal ID support
+  - `Invoice` DTO: `sellerSiret`/`buyerSiret` now nullable; added `vatNumber`, `country`, `legalId` fields
+  - `Company` DTO: `siret` now nullable; added `legalId`, `legalIdScheme` fields
+  - Supports EU and non-EU invoices (UK, CH, etc.)
+
+## [1.7.0] - 2026-03-29
+
+### Added
+
+- **CreditNoteResource** for `ScellClient` (Bearer token / dashboard): `list()`, `get()`, `create()`, `send()`, `download()`, `remainingCreditable()`
+- **`InvoiceResource::submit()`**: `POST /invoices/{id}/submit` for submitting an invoice for processing
+- **TenantDirectCreditNoteResource**: added `get()`, `update()`, `send()`, `download()`, `remainingCreditable()`
+- 5 additional webhook events documented in README
+
+### Fixed
+
+- `Config::sandbox()` now uses the correct sandbox URL
+- `HttpClient` User-Agent now uses `SDK_VERSION` constant instead of a hardcoded string
+- `InsufficientBalanceException`: HTTP 402 now correctly mapped in `ScellException::fromResponse()`
+
+## [1.6.1] - 2026-03-31
+
+### Changed
+
+- Clarified `ScellApiClient` PHPDoc: authentication mode, path normalization comment
+- Minor documentation improvements
+
+## [1.6.0] - 2026-03-31
+
+### Fixed
+
+- `Config::SANDBOX_BASE_URL` corrected from `https://sandbox.api.scell.io/api/v1` to `https://api.scell.io/api/v1` — sandbox routing is handled server-side by key prefix (`tk_test_*` vs `tk_live_*`), not by URL
+
 ## [1.5.0] - 2026-03-12
 
 ### Added

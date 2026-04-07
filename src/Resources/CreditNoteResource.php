@@ -13,7 +13,7 @@ use Scell\Sdk\Http\HttpClient;
  * Resource pour les avoirs (credit notes) du dashboard.
  *
  * Permet de creer, lister et gerer les avoirs via Bearer token (utilisateur connecte).
- * La suppression est interdite (conformite NF525).
+ * La suppression est interdite (conformite ISCA).
  *
  * @example
  * ```php

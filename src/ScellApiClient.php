@@ -19,7 +19,7 @@ use Scell\Sdk\Resources\TenantInvoiceResource;
 
 /**
  * API Client for server-to-server integration.
- * Uses X-API-Key header with sk_live_* or sk_test_* keys.
+ * Uses X-API-Key header with tk_live_* or tk_test_* keys.
  *
  * Provides access to both legacy invoice/signature endpoints
  * and tenant management endpoints. For dedicated tenant operations,
@@ -28,14 +28,13 @@ use Scell\Sdk\Resources\TenantInvoiceResource;
  * @example
  * ```php
  * // Initialisation avec API Key
- * $api = ScellApiClient::withApiKey('sk_live_...');
+ * $api = ScellApiClient::withApiKey('tk_live_...');
  *
  * // Ou mode sandbox
- * $api = ScellApiClient::sandbox('sk_test_...');
+ * $api = ScellApiClient::sandbox('tk_test_...');
  *
  * // Creer une facture
  * $invoice = $api->invoices()->builder()
- *     ->invoiceNumber('FACT-2024-001')
  *     ->outgoing()
  *     ->facturX()
  *     ->issueDate(new \DateTime())
@@ -68,7 +67,7 @@ class ScellApiClient
     /**
      * Cree une instance du client API.
      *
-     * @param string $apiKey Cle API (commence par sk_live_ ou sk_test_)
+     * @param string $apiKey Cle API (commence par tk_live_ ou tk_test_)
      * @param Config|null $config Configuration optionnelle
      */
     private function __construct(
@@ -92,7 +91,7 @@ class ScellApiClient
     /**
      * Cree un client avec une API Key.
      *
-     * @param string $apiKey Cle API (sk_live_... ou sk_test_...)
+     * @param string $apiKey Cle API (tk_live_... ou tk_test_...)
      * @param Config|null $config Configuration optionnelle
      */
     public static function withApiKey(string $apiKey, ?Config $config = null): self
@@ -103,7 +102,7 @@ class ScellApiClient
     /**
      * Cree un client en mode sandbox.
      *
-     * @param string $apiKey Cle API sandbox (sk_test_...)
+     * @param string $apiKey Cle API sandbox (tk_test_...)
      */
     public static function sandbox(string $apiKey): self
     {
@@ -146,7 +145,7 @@ class ScellApiClient
     }
 
     /**
-     * Resource pour la conformite fiscale NF525.
+     * Resource pour la conformite fiscale ISCA.
      */
     public function fiscal(): FiscalResource
     {

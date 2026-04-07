@@ -63,7 +63,6 @@ class InvoiceResource
      * Cree une nouvelle facture.
      *
      * @param array{
-     *     invoice_number: string,
      *     direction: Direction|string,
      *     output_format: OutputFormat|string,
      *     issue_date: DateTimeInterface|string,
@@ -297,7 +296,6 @@ class InvoiceResource
         $payload = [];
 
         // Champs simples
-        $payload['invoice_number'] = $data['invoice_number'];
         $payload['direction'] = $data['direction'] instanceof Direction
             ? $data['direction']->value
             : $data['direction'];
@@ -363,6 +361,9 @@ class InvoiceBuilder
         private readonly InvoiceResource $resource
     ) {}
 
+    /**
+     * @deprecated since v1.9.0 — invoice numbers are server-generated. This method has no effect.
+     */
     public function invoiceNumber(string $number): self
     {
         $this->data['invoice_number'] = $number;
