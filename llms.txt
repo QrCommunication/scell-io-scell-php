@@ -92,6 +92,67 @@ Three authentication modes, each with its own client:
    Header: X-Tenant-Key: <tk_live_... or tk_test_...>
    Use case: SaaS platforms managing sub-tenants
 
+## Onboarding
+
+The `onboarding` resource exposes the SuperPDP OAuth2 flow so a partner can enroll end-users (signup, KYB, identity verification) inside a popup. On completion, Scell provisions a tenant automatically.
+
+Flow:
+1. Create a session → receive a session_id (`POST /onboarding/sessions`)
+2. Get the SuperPDP authorize URL (`POST /onboarding/superpdp/authorize`) → { authorize_url, state }
+3. Redirect the user's browser to authorize_url — SuperPDP handles the full signup/KYB/identity flow
+4. SuperPDP returns a code via redirect; pass it to the callback (`POST /onboarding/superpdp/callback`)
+5. Returns { success, authorization_code, tenant: { id, name, siret, environment } }
+
+Use `ScellPublicClient` (publishable key, safe client-side) or `ScellApiClient` (API key, server-side).
+
+### OnboardingResource methods
+
+$client->onboarding()->createSession(array $input): OnboardingSession
+  POST /onboarding/sessions
+
+$client->onboarding()->getSession(string $sessionId): OnboardingSession
+  GET /onboarding/sessions/:id
+
+$client->onboarding()->getSuperPDPAuthorizeUrl(array $input): array
+  POST /onboarding/superpdp/authorize
+  Returns: ['authorize_url' => string, 'state' => string]
+
+$client->onboarding()->superpdpCallback(array $input): array
+  POST /onboarding/superpdp/callback
+  Returns: ['success' => bool, 'authorization_code' => string, 'tenant' => [...]]
+
+### Example — server-side callback handler (Laravel)
+
+```php
+use Scell\Sdk\ScellApiClient;
+
+$api = ScellApiClient::withApiKey('sk_live_...');
+
+// Step 1: Create a session
+$session = $api->onboarding()->createSession([
+    'partner_ref'  => 'my-internal-user-id',
+    'redirect_url' => 'https://myapp.com/onboarding/complete',
+]);
+
+// Step 2: Get SuperPDP authorize URL
+$auth = $api->onboarding()->getSuperPDPAuthorizeUrl([
+    'session_id' => $session['id'],
+]);
+// $auth['authorize_url'] — open this in a popup on the frontend
+
+// Step 4: Backend callback (SuperPDP redirects back with code + state)
+$result = $api->onboarding()->superpdpCallback([
+    'session_id' => $session['id'],
+    'code'       => $request->input('code'),
+    'state'      => $request->input('state'),
+]);
+
+if ($result['success']) {
+    $tenant = $result['tenant'];
+    echo "Tenant enrolé : {$tenant['name']} — SIRET {$tenant['siret']}";
+}
+```
+
 ## HTTP Client
 
     Scell\Sdk\Http\HttpClient

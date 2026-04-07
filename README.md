@@ -234,6 +234,52 @@ $companies = $client->companies()->list();
 $webhooks = $client->webhooks()->list();
 ```
 
+### Onboarder un nouveau partenaire (SuperPDP OAuth2)
+
+Le flow d'onboarding intègre SuperPDP pour gérer l'inscription, le KYB et la vérification d'identité de vos utilisateurs dans une popup. Une fois le flow complété, Scell provisionne automatiquement un tenant pour l'utilisateur.
+
+```php
+use Scell\Sdk\ScellApiClient;
+
+$api = ScellApiClient::withApiKey('sk_live_...');
+
+// Étape 1 : Créer une session d'onboarding
+$session = $api->onboarding()->createSession([
+    'partner_ref'  => 'mon-id-utilisateur-interne',
+    'redirect_url' => 'https://monapp.com/onboarding/complete',
+]);
+
+// Étape 2 : Obtenir l'URL d'autorisation SuperPDP
+$auth = $api->onboarding()->getSuperPDPAuthorizeUrl([
+    'session_id' => $session['id'],
+]);
+// Ouvrir $auth['authorize_url'] dans un popup côté frontend
+// SuperPDP gère l'inscription, le KYB et la vérification d'identité
+
+// Étape 3 : Réceptionner le callback SuperPDP (code + state)
+$result = $api->onboarding()->superpdpCallback([
+    'session_id' => $session['id'],
+    'code'       => $request->input('code'),
+    'state'      => $request->input('state'),
+]);
+
+if ($result['success']) {
+    $tenant = $result['tenant'];
+    echo "Tenant enrôlé : {$tenant['name']} — SIRET {$tenant['siret']}";
+    // $tenant : ['id', 'name', 'siret', 'environment']
+}
+
+// Consulter le statut d'une session
+$status = $api->onboarding()->getSession($session['id']);
+```
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `createSession(array $input)` | `POST /onboarding/sessions` | Créer une session d'onboarding |
+| `getSession(string $id)` | `GET /onboarding/sessions/:id` | Consulter le statut d'une session |
+| `getSuperPDPAuthorizeUrl(array $input)` | `POST /onboarding/superpdp/authorize` | Obtenir l'URL OAuth2 SuperPDP |
+| `superpdpCallback(array $input)` | `POST /onboarding/superpdp/callback` | Finaliser l'enrôlement après redirect |
+
 ### Gerer les factures entrantes (fournisseurs)
 
 ```php
