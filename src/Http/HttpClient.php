@@ -21,7 +21,7 @@ use Scell\Sdk\Exceptions\ScellException;
  */
 class HttpClient
 {
-    public const SDK_VERSION = '1.11.1';
+    public const SDK_VERSION = '1.11.2';
     private Client $client;
     private string $baseUrl;
     private ?string $bearerToken = null;

@@ -80,7 +80,7 @@ class OnboardingResource
      */
     public function getSuperPDPAuthorizeUrl(string $sessionId): array
     {
-        return $this->http->get('onboarding/superpdp/authorize', [
+        return $this->http->post('onboarding/superpdp/authorize', [
             'session_id' => $sessionId,
         ]);
     }
