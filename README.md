@@ -275,7 +275,7 @@ $status = $api->onboarding()->getSession($session['id']);
 |---------|----------|-------------|
 | `createSession(array $input)` | `POST /onboarding/sessions` | Créer une session d'onboarding |
 | `getSession(string $id)` | `GET /onboarding/sessions/:id` | Consulter le statut d'une session |
-| `getSuperPDPAuthorizeUrl(string $sessionId)` | `GET /onboarding/superpdp/authorize` | Obtenir l'URL OAuth2 SuperPDP |
+| `getSuperPDPAuthorizeUrl(string $sessionId)` | `POST /onboarding/superpdp/authorize` | Obtenir l'URL OAuth2 SuperPDP |
 | `superpdpCallback(string $sessionId, string $code, string $state)` | `POST /onboarding/superpdp/callback` | Finaliser l'enrôlement après redirect |
 
 ### Gerer les factures entrantes (fournisseurs)
