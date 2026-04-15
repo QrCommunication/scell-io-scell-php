@@ -173,11 +173,10 @@ $signature = $api->signatures()->builder()
     ->addEmailSigner('Jean', 'Dupont', 'jean.dupont@example.com')
     ->addSmsSigner('Marie', 'Martin', '+33612345678')
     ->addSignaturePosition(page: 5, x: 100, y: 700, width: 200, height: 50)
-    ->uiConfig(
-        logoUrl: 'https://example.com/logo.png',
-        primaryColor: '#0066CC',
-        companyName: 'Ma Societe'
-    )
+    ->uiConfig([
+        'sidebar_logo' => 'https://example.com/logo.png',
+        'sidebar_background_color' => '#0066CC',
+    ])
     ->redirectUrls(
         completeUrl: 'https://example.com/signed',
         cancelUrl: 'https://example.com/cancelled'
@@ -192,6 +191,30 @@ echo "Statut: {$signature->status->label()}";
 foreach ($signature->signers as $signer) {
     echo "{$signer->fullName()}: {$signer->signingUrl}";
 }
+```
+
+#### White-label avance + options de signature (v1.12.0)
+
+```php
+$signature = $api->signatures()->builder()
+    ->title('Contrat NDA')
+    ->documentFromFile('/path/to/nda.pdf')
+    ->addEmailSigner('Jean', 'Dupont', 'jean@example.com', message: 'Bonjour, votre code OTP : {OTP}')
+    ->addSignaturePosition(page: 1, x: 70, y: 85, width: 20, height: 5, unit: 'percent')
+    ->uiConfig([
+        'sidebar_logo'             => 'https://cdn.example.com/logo.svg',
+        'sidebar_background_color' => '#0F172A',
+        'sidebar_text_color'       => '#FFFFFF',
+        'hide_branding'            => true,
+        'iframe_ancestors'         => ['https://app.example.com'],
+    ])
+    ->signatureOptions([
+        'signature_mode'     => 'both',           // 'draw' | 'type' | 'both'
+        'signer_must_read'   => true,
+        'user_editable_data' => false,
+        'timezone'           => 'Europe/Paris',
+    ])
+    ->create();
 ```
 
 ### Client Dashboard (Bearer token)

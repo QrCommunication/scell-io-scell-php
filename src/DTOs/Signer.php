@@ -12,6 +12,10 @@ use Scell\Sdk\Enums\AuthMethod;
  */
 readonly class Signer
 {
+    /**
+     * @param string|null $message Message custom envoye au signataire (max 500 chars).
+     *                             Supporte le placeholder `{OTP}` qui sera remplace par le code OTP.
+     */
     public function __construct(
         public ?string $id,
         public string $firstName,
@@ -23,6 +27,7 @@ readonly class Signer
         public ?string $signingUrl = null,
         public ?DateTimeImmutable $signedAt = null,
         public ?DateTimeImmutable $refusedAt = null,
+        public ?string $message = null,
     ) {}
 
     /**
@@ -41,11 +46,14 @@ readonly class Signer
             signingUrl: $data['signing_url'] ?? null,
             signedAt: isset($data['signed_at']) ? new DateTimeImmutable($data['signed_at']) : null,
             refusedAt: isset($data['refused_at']) ? new DateTimeImmutable($data['refused_at']) : null,
+            message: $data['message'] ?? null,
         );
     }
 
     /**
      * Cree un nouveau signataire pour une demande de signature.
+     *
+     * @param string|null $message Message custom (max 500 chars). Placeholder `{OTP}` supporte.
      */
     public static function create(
         string $firstName,
@@ -53,6 +61,7 @@ readonly class Signer
         AuthMethod $authMethod,
         ?string $email = null,
         ?string $phone = null,
+        ?string $message = null,
     ): self {
         return new self(
             id: null,
@@ -61,6 +70,29 @@ readonly class Signer
             authMethod: $authMethod,
             email: $email,
             phone: $phone,
+            message: $message,
+        );
+    }
+
+    /**
+     * Retourne une copie du signataire avec un message custom.
+     *
+     * @param string $message Message max 500 chars, placeholder `{OTP}` supporte.
+     */
+    public function withMessage(string $message): self
+    {
+        return new self(
+            id: $this->id,
+            firstName: $this->firstName,
+            lastName: $this->lastName,
+            authMethod: $this->authMethod,
+            email: $this->email,
+            phone: $this->phone,
+            status: $this->status,
+            signingUrl: $this->signingUrl,
+            signedAt: $this->signedAt,
+            refusedAt: $this->refusedAt,
+            message: $message,
         );
     }
 
@@ -75,6 +107,7 @@ readonly class Signer
             'email' => $this->email,
             'phone' => $this->phone,
             'auth_method' => $this->authMethod->value,
+            'message' => $this->message,
         ], fn($value) => $value !== null);
     }
 

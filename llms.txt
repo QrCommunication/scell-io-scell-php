@@ -635,9 +635,55 @@ $builder->documentFromPath(string $path)         // reads and base64-encodes fil
 $builder->message(string $message)
 $builder->externalId(string $id)
 $builder->expiresAt(DateTimeInterface|string $date)
-$builder->addSigner(string $name, string $email, string $phone, AuthMethod|string $authMethod)
+$builder->addSigner(string $firstName, string $lastName, AuthMethod $authMethod, ?string $email = null, ?string $phone = null, ?string $message = null)
+$builder->addEmailSigner(string $firstName, string $lastName, string $email, ?string $message = null)
+$builder->addSmsSigner(string $firstName, string $lastName, string $phone, ?string $message = null)
 $builder->addSignerDto(Signer $signer)
+$builder->addSignaturePosition(int $page, float $x, float $y, ?float $width = null, ?float $height = null, string $unit = 'percent')
+$builder->uiConfig(array $config)                // v1.12.0 — sidebar_*, header_*, footer_*, button_*, sign_button_*, hide_*, iframe_ancestors (BREAKING: anciennement 3 params positionnels)
+$builder->signatureOptions(array $options)       // v1.12.0 — signature_mode, signer_must_read, user_editable_data, timezone
 $builder->create(): Signature
+```
+
+### Signer message & position unit (v1.12.0)
+
+```php
+// Message custom par signataire (max 500 chars, placeholder {OTP})
+$builder->addEmailSigner('Jean', 'Dupont', 'jean@example.com', message: 'Code OTP : {OTP}');
+
+// Coordonnees en pourcentage (defaut) ou en pixels
+$builder->addSignaturePosition(1, 70.0, 85.0, 20.0, 5.0, 'percent');
+$builder->addSignaturePosition(1, 450.0, 680.0, 150.0, 40.0, 'pixel');
+
+// UI (21 champs alignes sur la spec OpenAPI.com)
+$builder->uiConfig([
+    'sidebar_logo'             => 'https://cdn.example.com/logo.svg',
+    'sidebar_background_color' => '#0F172A',
+    'sidebar_text_color'       => '#FFFFFF',
+    'header_logo'              => '...',
+    'header_background_color'  => '#FFFFFF',
+    'header_text_color'        => '#000000',
+    'footer_text'              => 'Powered by Example',
+    'footer_background_color'  => '#F5F5F5',
+    'footer_text_color'        => '#333333',
+    'button_background_color'  => '#0066CC',
+    'button_text_color'        => '#FFFFFF',
+    'sign_button_background_color' => '#00AA66',
+    'sign_button_text_color'   => '#FFFFFF',
+    'hide_header'              => false,
+    'hide_footer'              => false,
+    'hide_sidebar'             => false,
+    'hide_branding'            => true,
+    'iframe_ancestors'         => ['https://app.example.com'],
+]);
+
+// Options de signature
+$builder->signatureOptions([
+    'signature_mode'     => 'both',           // 'draw' | 'type' | 'both'
+    'signer_must_read'   => true,
+    'user_editable_data' => false,
+    'timezone'           => 'Europe/Paris',
+]);
 ```
 
 ### Other methods

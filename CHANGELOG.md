@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.12.0 — 2026-04-15
+
+### Added
+- `SignatureBuilder::signatureOptions(array $options)` — signature_mode, signer_must_read, user_editable_data, timezone.
+- `Signer::$message` (setter et property) — message custom envoye au signataire avec placeholder `{OTP}` (max 500 chars).
+- `addSignaturePosition()` accepte un 6e parametre `$unit` (`'percent'` par defaut, `'pixel'` pour coordonnees absolues).
+
+### Changed (BREAKING)
+- `SignatureBuilder::uiConfig(array $config)` — signature changee : accepte un tableau associatif (anciennement 3 parametres positionnels `logoUrl`/`primaryColor`/`companyName`). Accepte les 21 champs UI alignes sur la spec OpenAPI.com (`sidebar_logo`, `sidebar_background_color`, `sidebar_text_color`, `header_*`, `footer_*`, `button_*`, `sign_button_*`, `hide_*`, `iframe_ancestors`).
+
+### Removed (BREAKING)
+- `SignatureBuilder::uiConfig($logoUrl, $primaryColor, $companyName)` (signature 3-params) supprimee. Utiliser `uiConfig(array $config)` avec les nouveaux champs spec OpenAPI.com (`sidebar_logo`, `sidebar_background_color`, etc.). Le champ `company_name` n'a pas d'equivalent (non supporte par OpenAPI.com).
+
+### Fixed
+- Documentation `addSignaturePosition()` : x/y sont en `'percent'` par defaut (0-100), pas pixels.
+
 ## [1.11.0] - 2026-04-07
 
 ### Fixed

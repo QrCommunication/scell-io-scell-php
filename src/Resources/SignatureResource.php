@@ -64,6 +64,7 @@ class SignatureResource
      *     description?: string,
      *     signature_positions?: array[],
      *     ui_config?: array,
+     *     signature_options?: array,
      *     redirect_complete_url?: string,
      *     redirect_cancel_url?: string,
      *     expires_at?: DateTimeInterface|string,
@@ -183,6 +184,9 @@ class SignatureResource
         if (isset($data['ui_config'])) {
             $payload['ui_config'] = $data['ui_config'];
         }
+        if (isset($data['signature_options'])) {
+            $payload['signature_options'] = $data['signature_options'];
+        }
         if (isset($data['redirect_complete_url'])) {
             $payload['redirect_complete_url'] = $data['redirect_complete_url'];
         }
@@ -266,43 +270,78 @@ class SignatureBuilder
 
     /**
      * Ajoute un signataire.
+     *
+     * @param string|null $message Message custom optionnel envoye au signataire (max 500 chars).
+     *                             Supporte le placeholder `{OTP}` qui sera remplace par le code OTP.
      */
     public function addSigner(
         string $firstName,
         string $lastName,
         AuthMethod $authMethod,
         ?string $email = null,
-        ?string $phone = null
+        ?string $phone = null,
+        ?string $message = null,
     ): self {
-        $this->signers[] = Signer::create($firstName, $lastName, $authMethod, $email, $phone);
+        $this->signers[] = Signer::create($firstName, $lastName, $authMethod, $email, $phone, $message);
         return $this;
     }
 
     /**
      * Ajoute un signataire avec authentification par email.
+     *
+     * @param string|null $message Message custom optionnel (max 500 chars, placeholder `{OTP}`).
      */
-    public function addEmailSigner(string $firstName, string $lastName, string $email): self
+    public function addEmailSigner(string $firstName, string $lastName, string $email, ?string $message = null): self
     {
-        return $this->addSigner($firstName, $lastName, AuthMethod::Email, $email);
+        return $this->addSigner($firstName, $lastName, AuthMethod::Email, $email, null, $message);
     }
 
     /**
      * Ajoute un signataire avec authentification par SMS.
+     *
+     * @param string|null $message Message custom optionnel (max 500 chars, placeholder `{OTP}`).
      */
-    public function addSmsSigner(string $firstName, string $lastName, string $phone): self
+    public function addSmsSigner(string $firstName, string $lastName, string $phone, ?string $message = null): self
     {
-        return $this->addSigner($firstName, $lastName, AuthMethod::Sms, null, $phone);
+        return $this->addSigner($firstName, $lastName, AuthMethod::Sms, null, $phone, $message);
+    }
+
+    /**
+     * Ajoute un signataire a partir d'un DTO Signer.
+     */
+    public function addSignerDto(Signer $signer): self
+    {
+        $this->signers[] = $signer;
+        return $this;
     }
 
     /**
      * Ajoute une position de signature visuelle.
+     *
+     * Les coordonnees `x` / `y` (et `width` / `height`) sont exprimees dans l'unite `$unit` :
+     *  - `'percent'` (defaut) : valeurs entre 0 et 100, relatives a la page.
+     *  - `'pixel'`            : coordonnees absolues en pixels.
+     *
+     * @param int         $page    Numero de page (1-indexe).
+     * @param float       $x       Position X (percent 0-100 ou pixels).
+     * @param float       $y       Position Y (percent 0-100 ou pixels).
+     * @param float|null  $width   Largeur optionnelle.
+     * @param float|null  $height  Hauteur optionnelle.
+     * @param string      $unit    `'percent'` (defaut) ou `'pixel'`.
      */
-    public function addSignaturePosition(int $page, float $x, float $y, ?float $width = null, ?float $height = null): self
-    {
+    public function addSignaturePosition(
+        int $page,
+        float $x,
+        float $y,
+        ?float $width = null,
+        ?float $height = null,
+        string $unit = 'percent',
+    ): self {
         $position = [
             'page' => $page,
             'x' => $x,
             'y' => $y,
+            'unit' => $unit,
         ];
         if ($width !== null) {
             $position['width'] = $width;
@@ -317,14 +356,45 @@ class SignatureBuilder
 
     /**
      * Configure l'interface utilisateur (white-label).
+     *
+     * Champs supportes (tous optionnels, alignes sur la spec OpenAPI.com) :
+     *  - `sidebar_logo`, `sidebar_background_color`, `sidebar_text_color`
+     *  - `header_logo`, `header_background_color`, `header_text_color`
+     *  - `footer_text`, `footer_background_color`, `footer_text_color`
+     *  - `button_background_color`, `button_text_color`
+     *  - `sign_button_background_color`, `sign_button_text_color`
+     *  - `hide_header`, `hide_footer`, `hide_sidebar`, `hide_branding`
+     *  - `iframe_ancestors` (liste de domaines autorises a embarquer en iframe)
+     *
+     * Les valeurs `null` sont filtrees. Appels multiples fusionnes.
+     *
+     * @param array<string, mixed> $config
      */
-    public function uiConfig(?string $logoUrl = null, ?string $primaryColor = null, ?string $companyName = null): self
+    public function uiConfig(array $config): self
     {
-        $this->data['ui_config'] = array_filter([
-            'logo_url' => $logoUrl,
-            'primary_color' => $primaryColor,
-            'company_name' => $companyName,
-        ], fn($v) => $v !== null);
+        $filtered = array_filter($config, fn($v) => $v !== null);
+        $existing = $this->data['ui_config'] ?? [];
+        $this->data['ui_config'] = array_merge($existing, $filtered);
+        return $this;
+    }
+
+    /**
+     * Configure les options de signature.
+     *
+     * Champs supportes (tous optionnels) :
+     *  - `signature_mode`      : mode de signature (`'draw'`, `'type'`, `'both'`, ...)
+     *  - `signer_must_read`    : bool, force le signataire a lire le document avant de signer
+     *  - `user_editable_data`  : bool, autorise le signataire a modifier ses donnees
+     *  - `timezone`            : fuseau horaire (ex: `'Europe/Paris'`)
+     *
+     * @param array<string, mixed> $options
+     */
+    public function signatureOptions(array $options): self
+    {
+        $filtered = array_filter($options, fn($v) => $v !== null);
+        if (!empty($filtered)) {
+            $this->data['signature_options'] = $filtered;
+        }
         return $this;
     }
 
