@@ -10,6 +10,7 @@ SDK PHP officiel pour l'API Scell.io - Facturation electronique (Factur-X/UBL/CI
 ## Features
 
 - Facturation electronique conforme (Factur-X, UBL 2.1, UN/CEFACT CII)
+- Support B2B et **B2C** (particulier) avec generation Factur-X conforme BR-CO-26 EN16931
 - Signature electronique simple (eIDAS EU-SES)
 - Gestion multi-tenant (sub-tenants, factures directes et entrantes)
 - Conformite fiscale ISCA (integrite, clotures, FEC, attestations)
