@@ -101,13 +101,18 @@ class TenantDirectInvoiceResource
      *     output_format: OutputFormat|string,
      *     issue_date: DateTimeInterface|string,
      *     seller: array{siret: string, name: string, address: array},
-     *     buyer: array{siret: string, name: string, address: array},
+     *     buyer: array{siret?: string, name: string, address: array, is_individual?: bool},
      *     lines: array[],
      *     due_date?: DateTimeInterface|string,
      *     currency?: string,
      *     external_id?: string,
-     *     metadata?: array
+     *     metadata?: array,
+     *     buyer_is_individual?: bool
      * } $data Donnees de la facture
+     *
+     * Mode B2C : passez `buyer.is_individual = true` ou `buyer_is_individual = true`
+     * pour signaler un acheteur particulier. Le SIRET / VAT / legal_id deviennent
+     * alors optionnels (BR-CO-26 EN16931).
      *
      * @example
      * ```php
@@ -259,6 +264,14 @@ class TenantDirectInvoiceResource
         // Vendeur et acheteur
         $payload['seller'] = $data['seller'];
         $payload['buyer'] = $data['buyer'];
+
+        // Flag B2C : extraire depuis buyer.is_individual ou buyer_is_individual top-level
+        $isIndividual = $data['buyer_is_individual']
+            ?? $data['buyer']['is_individual']
+            ?? null;
+        if ($isIndividual !== null) {
+            $payload['buyer_is_individual'] = (bool) $isIndividual;
+        }
 
         // Lignes
         $payload['lines'] = $data['lines'];

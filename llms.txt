@@ -18,6 +18,95 @@ composer require scell/sdk
 
 Requirements: PHP 8.2+, guzzlehttp/guzzle ^7.0
 
+## B2C Support — Particulier (Private Individual Buyer)
+
+Since v1.13.0, Scell.io supports B2C invoices and credit notes where the
+buyer is a private individual (no SIRET / SIREN / VAT / legal_id).
+
+### When to use B2C
+
+| Buyer | Mode | `buyer_is_individual` |
+|-------|------|----------------------|
+| French company (FR) | B2B | `false` (default) |
+| EU company (BE, DE, IT...) | B2B | `false` |
+| Non-EU company (US, CN...) | B2B | `false` |
+| Private individual (FR, EU, world) | **B2C** | `true` |
+
+### Effects when `buyer_is_individual = true`
+
+- **Validation server-side** : `buyer_siret`, `buyer_siren`, `buyer_vat_number`,
+  `buyer_legal_id` are NOT required, even for `buyer_country = 'FR'`.
+- **Factur-X / UBL / CII generation** : balises `BT-46` (BuyerLegalOrganisation),
+  `BT-47` (BuyerTaxIdentifier scheme=FC), `BT-48` (BuyerVATIdentifier scheme=VA)
+  are OMITTED for the buyer party. Only `BT-44` (Name) and `BG-8` (Address) are
+  included. This is conformant with EN16931 BR-CO-26.
+- **Payment terms** : the legally-required B2B mentions from French Code de
+  commerce article L441-10 (late payment penalties = 3x legal interest rate +
+  fixed recovery indemnity of 40 EUR) are automatically removed.
+- **Credit notes** : credit notes inherit `buyer_is_individual` from their
+  source invoice. NF525 / ISCA fiscal compliance is preserved.
+
+### How to use
+
+**Builder (recommended)** :
+```php
+$invoice = $client->invoices()->builder()
+    ->outgoing()->facturX()
+    ->issueDate('2026-05-03')
+    ->seller('12345678901234', 'My Co SAS', $sellerAddress)
+    ->buyerIndividual('Marie Dupont', $buyerAddress)  // <-- B2C
+    ->addLine('Coaching', 1.0, 150.00, 20.0)
+    ->create();
+```
+
+**Raw array** :
+```php
+$invoice = $client->invoices()->create([
+    // ...
+    'buyer_name'           => 'Marie Dupont',
+    'buyer_address'        => [...],
+    'buyer_country'        => 'FR',
+    'buyer_is_individual'  => true,   // <-- B2C
+    // No buyer_siret / buyer_vat_number / buyer_legal_id needed
+]);
+```
+
+**Tenant Direct API** :
+```php
+$invoice = $client->tenantDirectInvoices()->create([
+    'company_id' => $companyId,
+    'buyer' => [
+        'company_name'  => 'Marie Dupont',  // full name for individuals
+        'address'       => [...],
+        'email'         => 'marie@example.com',
+        'is_individual' => true,             // <-- B2C
+    ],
+    'lines' => [...],
+]);
+```
+
+### Inspect B2C status on existing invoice
+
+```php
+$invoice = $client->invoices()->get($id);
+
+if ($invoice->isB2c()) {
+    echo "Particulier";
+} else {
+    echo "Entreprise " . $invoice->buyerSiret;
+}
+```
+
+### Migrating existing B2B code
+
+No breaking change. All existing calls keep working — `buyer_is_individual`
+defaults to `false`. To opt-in:
+
+1. Replace `->buyer($siret, $name, $addr)` with
+   `->buyerIndividual($name, $addr)` for individual buyers, OR
+2. Add `->asB2c()` to an existing builder, OR
+3. Pass `'buyer_is_individual' => true` in raw array calls.
+
 ## Authentication Modes
 
 Three client classes, each for a different authentication context:
@@ -324,7 +413,14 @@ $builder->archiveEnabled(bool $enabled = true)
 
 // Parties
 $builder->seller(string $siret, string $name, Address|array $address)
-$builder->buyer(string $siret, string $name, Address|array $address)
+$builder->buyer(?string $siret, string $name, Address|array $address)
+                              // siret is optional since v1.13.0 (B2C)
+
+// B2C helpers (v1.13.0+)
+$builder->buyerIndividual(string $name, Address|array $address)
+                              // sets buyer_is_individual=true automatically
+$builder->asB2c(bool $value = true)
+                              // explicit flag toggle on existing builder
 
 // Lines
 $builder->addLine(string $description, float $quantity, float $unitPrice, float $taxRate)
@@ -335,6 +431,38 @@ $builder->create(): Invoice
 
 // @deprecated since v1.9.0 — no-op, kept for backward compat
 $builder->invoiceNumber(string $number)
+```
+
+### B2C example — buyer is a private individual
+
+```php
+use Scell\Sdk\DTOs\Address;
+
+$invoice = $client->invoices()->builder()
+    ->outgoing()
+    ->facturX()
+    ->externalId('COACH-2026-001')
+    ->issueDate('2026-05-03')
+    ->seller(
+        siret:   '12345678901234',
+        name:    'Coach Pro SAS',
+        address: new Address('1 rue de la Paix', 'Paris', '75001', 'FR')
+    )
+    // No SIRET on the buyer — particulier
+    ->buyerIndividual(
+        name:    'Marie Dupont',
+        address: new Address('12 rue de Rivoli', 'Paris', '75001', 'FR')
+    )
+    ->addLine('Coaching individuel', 1.0, 150.00, 20.0)
+    ->create();
+
+assert($invoice->isB2c() === true);
+// Generated Factur-X:
+//   - BG-7 BuyerParty has only Name + Address
+//   - BT-46 (BuyerLegalOrganisation) — OMITTED (BR-CO-26)
+//   - BT-47 (BuyerTaxIdentifier)     — OMITTED
+//   - BT-48 (BuyerVATIdentifier)     — OMITTED
+// Payment terms : no L441-10 mentions (penalites, indemnite forfaitaire)
 ```
 
 ### incoming()
@@ -457,12 +585,13 @@ Properties:
 - `sellerCountry: ?string`
 - `sellerLegalId: ?string`
 - `sellerLegalIdScheme: ?string`
-- `buyerSiret: ?string` — nullable (international invoices)
+- `buyerSiret: ?string` — nullable (international invoices, B2C)
 - `buyerName: string`
 - `buyerVatNumber: ?string`
 - `buyerCountry: ?string`
 - `buyerLegalId: ?string`
 - `buyerLegalIdScheme: ?string`
+- `buyerIsIndividual: bool` — **B2C flag** (default false). When true, buyer SIRET/SIREN/VAT/legal_id are optional. Factur-X / UBL / CII generation omits BT-46/BT-47/BT-48 (BR-CO-26 EN16931 compliant).
 - `lines: InvoiceLine[]`
 - `environment: string` — 'production' | 'sandbox'
 - `paidAt: ?string`
@@ -478,6 +607,8 @@ $invoice->isOutgoing(): bool
 $invoice->isFinal(): bool    // status is 'validated' or 'transmitted'
 $invoice->isPaid(): bool
 $invoice->isIncoming(): bool
+$invoice->isB2c(): bool      // returns buyerIsIndividual
+$invoice->isB2b(): bool      // !buyerIsIndividual
 ```
 
 ---

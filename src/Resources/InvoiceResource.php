@@ -316,12 +316,19 @@ class InvoiceResource
             ? $data['seller_address']->toArray()
             : $data['seller_address'];
 
-        // Acheteur
-        $payload['buyer_siret'] = $data['buyer_siret'];
+        // Acheteur — siret optional en B2C
+        if (isset($data['buyer_siret'])) {
+            $payload['buyer_siret'] = $data['buyer_siret'];
+        }
         $payload['buyer_name'] = $data['buyer_name'];
         $payload['buyer_address'] = $data['buyer_address'] instanceof Address
             ? $data['buyer_address']->toArray()
             : $data['buyer_address'];
+
+        // Flag B2C : transmettre uniquement si explicitement defini
+        if (array_key_exists('buyer_is_individual', $data)) {
+            $payload['buyer_is_individual'] = (bool) $data['buyer_is_individual'];
+        }
 
         // Lignes
         $payload['lines'] = array_map(
@@ -439,11 +446,46 @@ class InvoiceBuilder
         return $this;
     }
 
-    public function buyer(string $siret, string $name, Address|array $address): self
+    /**
+     * Configure l'acheteur (B2B par defaut).
+     *
+     * Pour un acheteur particulier (B2C), prefere {@see buyerIndividual()}
+     * qui evite de passer un SIRET vide et marque buyer_is_individual=true.
+     *
+     * @param string|null $siret SIRET de l'acheteur (14 chiffres). Optionnel — null si VAT/legal_id fourni ou B2C.
+     */
+    public function buyer(?string $siret, string $name, Address|array $address): self
     {
-        $this->data['buyer_siret'] = $siret;
+        if ($siret !== null) {
+            $this->data['buyer_siret'] = $siret;
+        }
         $this->data['buyer_name'] = $name;
         $this->data['buyer_address'] = $address;
+        return $this;
+    }
+
+    /**
+     * Configure l'acheteur comme un particulier (B2C).
+     *
+     * En B2C :
+     * - SIRET / SIREN / VAT / legal_id ne sont pas obligatoires
+     * - Factur-X / UBL / CII : balises BT-46/BT-47/BT-48 omises (BR-CO-26)
+     * - Mentions de penalites de retard B2B (Code de commerce L441-10) supprimees
+     */
+    public function buyerIndividual(string $name, Address|array $address): self
+    {
+        $this->data['buyer_name'] = $name;
+        $this->data['buyer_address'] = $address;
+        $this->data['buyer_is_individual'] = true;
+        return $this;
+    }
+
+    /**
+     * Marque explicitement la facture comme B2C (acheteur particulier).
+     */
+    public function asB2c(bool $value = true): self
+    {
+        $this->data['buyer_is_individual'] = $value;
         return $this;
     }
 

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.13.0 — 2026-05-03
+
+### Added
+- **B2C support** : nouveau flag `buyer_is_individual` pour les factures et avoirs avec acheteur particulier.
+  - `InvoiceBuilder::buyerIndividual(string $name, Address|array $address)` — helper dedie pour B2C, marque automatiquement `buyer_is_individual=true` sans necessiter de SIRET.
+  - `InvoiceBuilder::asB2c(bool $value = true)` — bascule explicite B2C/B2B sur un builder existant.
+  - DTO `Invoice::$buyerIsIndividual` (bool) + `Invoice::isB2c()` / `Invoice::isB2b()`.
+  - DTO `CreditNote::$buyerIsIndividual` + `CreditNote::isB2c()` / `CreditNote::isB2b()` — herite automatiquement de la facture.
+  - Conformite Factur-X / UBL / CII : balises BT-46 (BuyerLegalOrganisation) / BT-47 (BuyerTaxIdentifier) / BT-48 (BuyerVATIdentifier) sont **omises** quand `buyer_is_individual=true` (BR-CO-26 EN16931).
+
+### Changed
+- `InvoiceBuilder::buyer(?string $siret, string $name, Address|array $address)` — premier parametre devient nullable. Compatibilite ascendante preservee : passer un SIRET fonctionne comme avant. En B2C, prefere `buyerIndividual()` pour la clarte.
+- `TenantDirectInvoiceResource::create()` accepte `buyer_is_individual` (top-level) ou `buyer.is_individual` (imbrique) dans le payload. Les deux sont propages.
+
+### Notes
+- Aucun breaking change : tous les appels existants continuent de fonctionner sans modification.
+- En B2C, le SIRET / VAT / legal_id sont optionnels cote API. Les mentions legales B2B (Code de commerce L441-10 : penalites de retard 3x taux legal, indemnite forfaitaire de recouvrement 40 EUR) sont automatiquement omises de Factur-X.
+
 ## 1.12.0 — 2026-04-15
 
 ### Added

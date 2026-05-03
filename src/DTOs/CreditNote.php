@@ -57,6 +57,12 @@ readonly class CreditNote
         public ?DateTimeImmutable $issueDate = null,
         public ?DateTimeImmutable $createdAt = null,
         public ?DateTimeImmutable $sentAt = null,
+        /**
+         * B2C flag : true si l'acheteur est un particulier.
+         * Herite de la facture associee. Determine si les balises
+         * BT-46/BT-47/BT-48 sont incluses dans Factur-X / UBL / CII.
+         */
+        public bool $buyerIsIndividual = false,
     ) {}
 
     /**
@@ -94,7 +100,24 @@ readonly class CreditNote
             issueDate: isset($data['issue_date']) ? new DateTimeImmutable($data['issue_date']) : null,
             createdAt: isset($data['created_at']) ? new DateTimeImmutable($data['created_at']) : null,
             sentAt: isset($data['sent_at']) ? new DateTimeImmutable($data['sent_at']) : null,
+            buyerIsIndividual: (bool) ($data['buyer']['is_individual'] ?? $data['buyer_is_individual'] ?? false),
         );
+    }
+
+    /**
+     * Verifie si l'avoir est B2C (acheteur particulier).
+     */
+    public function isB2c(): bool
+    {
+        return $this->buyerIsIndividual;
+    }
+
+    /**
+     * Verifie si l'avoir est B2B (acheteur entreprise).
+     */
+    public function isB2b(): bool
+    {
+        return ! $this->buyerIsIndividual;
     }
 
     /**

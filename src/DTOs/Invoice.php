@@ -57,6 +57,13 @@ readonly class Invoice
         public ?DateTimeImmutable $paidAt = null,
         public ?string $paymentReference = null,
         public ?string $paymentNote = null,
+        /**
+         * B2C flag : true si l'acheteur est un particulier (B2C).
+         * En B2C, SIRET / SIREN / VAT / legal_id sont optionnels et
+         * la generation Factur-X / UBL / CII omet BT-46/BT-47/BT-48
+         * (conforme BR-CO-26 EN16931).
+         */
+        public bool $buyerIsIndividual = false,
     ) {}
 
     /**
@@ -108,7 +115,24 @@ readonly class Invoice
             paidAt: isset($data['paid_at']) ? new DateTimeImmutable($data['paid_at']) : null,
             paymentReference: $data['payment_reference'] ?? null,
             paymentNote: $data['payment_note'] ?? null,
+            buyerIsIndividual: (bool) ($data['buyer']['is_individual'] ?? $data['buyer_is_individual'] ?? false),
         );
+    }
+
+    /**
+     * Verifie si la facture est B2C (acheteur particulier).
+     */
+    public function isB2c(): bool
+    {
+        return $this->buyerIsIndividual;
+    }
+
+    /**
+     * Verifie si la facture est B2B (acheteur entreprise).
+     */
+    public function isB2b(): bool
+    {
+        return ! $this->buyerIsIndividual;
     }
 
     /**
