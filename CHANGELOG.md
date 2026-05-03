@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.14.0 — 2026-05-03
+
+### Added
+- **Invoice Templates** : nouveau resource `$client->invoiceTemplates()` pour la personnalisation des factures et avoirs.
+  - DTO `InvoiceTemplate` (scope, logo, couleurs, mentions custom, advanced_options).
+  - 6 methodes : `list()`, `get()`, `create()`, `update()`, `delete()`, `markDefault()`.
+  - 3 scopes : `system` (Scell), `tenant` (par tenant), `sub_tenant` (specifique).
+  - Cascade de resolution serveur : explicit > sub_tenant default > tenant default > system default.
+- **Daily Closure email + CSV** : les tenants actifs recoivent automatiquement un email quotidien avec CSV de cloture (format de marche, signed URL valable 5 jours).
+- **Avoirs** : validation renforcee — `invoice_id` doit obligatoirement pointer sur une facture existante du meme tenant, en statut creditable, et non totalement avoiree. L'override des champs buyer/seller est maintenant interdit (heritage strict, autocertification ISCA).
+- DTO `Invoice` et `CreditNote` : nouveau champ `invoiceTemplateId` (heritage automatique de la facture vers l'avoir).
+
+### Notes
+- Aucun breaking change : `invoice_template_id` est optionnel, defaut = template system.
+- La personnalisation visuelle (logo, couleurs) est appliquee cote serveur lors de la generation PDF source. Factur-X XML : seul `custom_mentions` est ajoute aux conditions de paiement (BR-CO-26 conforme).
+
 ## 1.13.0 — 2026-05-03
 
 ### Added

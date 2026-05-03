@@ -107,6 +107,130 @@ defaults to `false`. To opt-in:
 2. Add `->asB2c()` to an existing builder, OR
 3. Pass `'buyer_is_individual' => true` in raw array calls.
 
+## Invoice Templates — Personnalisation factures / avoirs (since v1.14.0)
+
+Personnalisation visuelle (logo, couleurs, mentions) avec resolution cascade.
+
+### Cascade de resolution (cote serveur)
+
+1. `invoice.invoice_template_id` explicit (passe au create)
+2. Default sub_tenant template (scope=sub_tenant, is_default=true)
+3. Default tenant template (scope=tenant, is_default=true)
+   - Si invoice cote sub_tenant : doit avoir `is_available_to_subtenants=true`
+4. Default system template (scope=system, is_default=true)
+
+### CRUD via `$client->invoiceTemplates()`
+
+```php
+// Lister
+$page = $client->invoiceTemplates()->list(['scope' => 'tenant', 'per_page' => 25]);
+
+// Recuperer
+$tpl = $client->invoiceTemplates()->get('uuid');
+
+// Creer
+$tpl = $client->invoiceTemplates()->create([
+    'scope' => 'tenant',
+    'name' => 'Brand Q4 2026',
+    'logo_url' => 'https://cdn.client.com/logo.svg',
+    'primary_color' => '#0F172A',
+    'accent_color' => '#F472B6',
+    'custom_mentions' => 'TVA non applicable, art. 293 B du CGI',
+    'is_default' => true,
+    'is_available_to_subtenants' => true,
+]);
+
+// Modifier
+$tpl = $client->invoiceTemplates()->update($tpl->id, ['name' => 'Renamed']);
+
+// Marquer comme default
+$tpl = $client->invoiceTemplates()->markDefault($tpl->id);
+
+// Supprimer (soft delete)
+$client->invoiceTemplates()->delete($tpl->id);
+```
+
+### Utiliser un template lors de la creation
+
+```php
+$invoice = $client->invoices()->builder()
+    ->outgoing()->facturX()
+    ->seller(...)
+    ->buyer(...)
+    ->addLine(...)
+    ->create([
+        'invoice_template_id' => $tpl->id, // override explicit
+    ]);
+```
+
+### Champs
+
+| Champ | Type | Note |
+|-------|------|------|
+| `scope` | `system` \| `tenant` \| `sub_tenant` | system reserve Scell |
+| `tenant_id` | UUID | requis si scope=tenant ou sub_tenant |
+| `sub_tenant_id` | UUID | requis si scope=sub_tenant |
+| `name` | string | max 255 |
+| `is_default` | bool | un seul default par owner |
+| `is_available_to_subtenants` | bool | scope=tenant only ; partage avec sub-tenants |
+| `logo_url` | URL | max 2048 chars |
+| `logo_position` | `top-left` \| `top-center` \| `top-right` | defaut top-left |
+| `primary_color`, `accent_color`, `text_color`, `background_color` | hex `#RRGGBB` | optionnel |
+| `header_text`, `footer_text` | text | max 500 chars chacun |
+| `custom_mentions` | text | max 2000 chars — injecte dans Factur-X payment terms |
+| `advanced_options` | array | future-proofing (font, watermark, layout) |
+
+### Scope owner — qui peut quoi
+
+| Action | system | tenant own | sub_tenant own | tenant available_to | other |
+|--------|--------|------------|----------------|---------------------|-------|
+| view | OUI | OUI | OUI | OUI (read-only) | NON |
+| create | NON | OUI | OUI | — | NON |
+| update | NON | OUI | OUI | NON | NON |
+| delete | NON | OUI | OUI | NON | NON |
+| markDefault | NON | OUI | OUI | NON | NON |
+
+---
+
+## Daily Closure — Cloture quotidienne automatique
+
+Chaque jour a 00:05 UTC, un job cron execute `php artisan fiscal:daily-closing`
+qui :
+1. Cree une `FiscalClosing` pour chaque tenant actif (meme sans activite).
+2. Genere le hash de cloture (chaine ISCA).
+3. Genere le CSV au format de marche (colonnes : `increment_id, type, saving_date, document_date, total_excl_tax` + ligne Total).
+4. Stocke le CSV sur S3.
+5. Envoie un email a `tenant.email` avec le recap chiffre + signed URL telecharger CSV (valable 5 jours).
+
+### Format email (corps Markdown)
+
+```
+- Type de cloture : Journaliere
+- Du : {start} UTC
+- Au : {end} UTC
+- Nombre de documents : {count}
+- Total hors taxe : {total_ht} {currency}
+- Montant des taxes : {total_tax} {currency}
+- Empreinte du block : {closing_hash}
+- Empreinte du fichier : {csv_hash}
+
+[Telecharger votre cloture au format CSV]
+```
+
+### Recuperer une cloture par API
+
+```php
+// Liste
+$closings = $client->fiscal()->closings(['from' => '2026-05-01', 'to' => '2026-05-03']);
+
+// Detail (avec metadata.csv_path)
+$closing = $client->fiscal()->getClosing($id);
+```
+
+Le CSV est telechargeable via signed URL (route Laravel `signed`) — voir l'email recu.
+
+---
+
 ## Authentication Modes
 
 Three client classes, each for a different authentication context:
