@@ -64,6 +64,19 @@ readonly class Invoice
          * (conforme BR-CO-26 EN16931).
          */
         public bool $buyerIsIndividual = false,
+        /**
+         * Nombre d'avoirs (credit notes) emis lies a cette facture.
+         * Inclut les avoirs partiels et totaux. 0 si pas d'avoir.
+         * Disponible depuis SDK 1.15.0 (API 2026-05-04).
+         */
+        public int $creditNotesCount = 0,
+        /**
+         * Montant total avoire (somme des avoirs valides/envoyes/transmis).
+         * Permet de detecter qu'une facture est totalement avoiree
+         * (creditedAmount >= totalTtc) ou partiellement.
+         * Disponible depuis SDK 1.15.0.
+         */
+        public float $creditedAmount = 0.0,
     ) {}
 
     /**
@@ -116,7 +129,28 @@ readonly class Invoice
             paymentReference: $data['payment_reference'] ?? null,
             paymentNote: $data['payment_note'] ?? null,
             buyerIsIndividual: (bool) ($data['buyer']['is_individual'] ?? $data['buyer_is_individual'] ?? false),
+            creditNotesCount: (int) ($data['credit_notes_count'] ?? 0),
+            creditedAmount: (float) ($data['credited_amount'] ?? 0),
         );
+    }
+
+    /**
+     * Indique si la facture a au moins un avoir (partiel ou total).
+     * Disponible depuis SDK 1.15.0.
+     */
+    public function hasCreditNotes(): bool
+    {
+        return $this->creditNotesCount > 0;
+    }
+
+    /**
+     * Indique si la facture est totalement avoiree (avoirs >= totalTtc).
+     * Disponible depuis SDK 1.15.0.
+     */
+    public function isFullyCredited(): bool
+    {
+        return $this->creditedAmount > 0
+            && $this->creditedAmount + 0.001 >= $this->totalTtc;
     }
 
     /**
