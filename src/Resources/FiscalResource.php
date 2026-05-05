@@ -86,6 +86,62 @@ class FiscalResource
     }
 
     /**
+     * Telecharge l'auto-attestation ISCA NOMINATIVE (PDF binaire) pour le
+     * tenant authentifie ou pour un sub_tenant specifique.
+     *
+     * Le PDF inclut :
+     *  - Identite du logiciel (Scell.io + version)
+     *  - Identite de l'editeur (QR Communication SAS)
+     *  - **Identite nominative du beneficiaire** (tenant ou sub_tenant : nom,
+     *    SIRET, TVA, adresse, contact, statut KYB/KYC)
+     *  - Declaration de conformite ISCA (4 piliers : I, S, C, A)
+     *  - Empreinte d'integrite SHA-256 du document
+     *
+     * Le hash couvre l'identite du beneficiaire — 2 attestations pour 2
+     * beneficiaires distincts auront 2 hashes differents (preuve cryptographique
+     * de la non-transferabilite).
+     *
+     * @param string|null $subTenantId UUID optionnel du sub_tenant. Si fourni,
+     *   attestation emise pour ce sub_tenant (404 si introuvable ou n'appartient
+     *   pas au tenant). Sinon, attestation emise pour le tenant authentifie.
+     * @return string Contenu binaire du PDF (a ecrire avec file_put_contents).
+     *
+     * @example
+     *   // Attestation pour le tenant
+     *   $pdf = $scell->fiscal->iscaSelfAttestationDownload();
+     *   file_put_contents('attestation-tenant.pdf', $pdf);
+     *
+     *   // Attestation pour un sub_tenant
+     *   $pdf = $scell->fiscal->iscaSelfAttestationDownload('019d5ea8-...');
+     *   file_put_contents('attestation-sub.pdf', $pdf);
+     */
+    public function iscaSelfAttestationDownload(?string $subTenantId = null): string
+    {
+        $path = $subTenantId
+            ? "tenant/fiscal/isca/self-attestation/{$subTenantId}/download"
+            : 'tenant/fiscal/isca/self-attestation/download';
+        return $this->http->getRaw($path);
+    }
+
+    /**
+     * Telecharge le registre des mesures ISCA (PDF). Document non-nominatif
+     * decrivant les mesures techniques de conformite implementees par Scell.io.
+     */
+    public function iscaMeasuresRegisterDownload(): string
+    {
+        return $this->http->getRaw('tenant/fiscal/isca/measures-register/download');
+    }
+
+    /**
+     * Telecharge le dossier technique ISCA (PDF). Document non-nominatif
+     * decrivant l'architecture technique conforme aux exigences NF Z 42-025.
+     */
+    public function iscaTechnicalDossierDownload(): string
+    {
+        return $this->http->getRaw('tenant/fiscal/isca/technical-dossier/download');
+    }
+
+    /**
      * @return PaginatedResult<FiscalEntry>
      */
     public function entries(array $params = []): PaginatedResult

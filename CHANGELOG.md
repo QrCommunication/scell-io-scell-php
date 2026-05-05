@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.16.0 — 2026-05-06
+
+### Added
+- **`$client->fiscal->iscaSelfAttestationDownload(?string $subTenantId)`** — telecharge l'auto-attestation
+  ISCA **NOMINATIVE** au format PDF binaire pour le tenant authentifie ou pour
+  un sub_tenant specifique. Le PDF inclut l'identite nominative du beneficiaire
+  (raison sociale, SIRET, TVA, adresse, contact, statut KYB/KYC) en plus du
+  nom + version du logiciel. Le hash SHA-256 couvre l'identite — preuve
+  cryptographique de la non-transferabilite.
+- **`$client->fiscal->iscaMeasuresRegisterDownload()`** — registre des mesures ISCA (PDF).
+- **`$client->fiscal->iscaTechnicalDossierDownload()`** — dossier technique ISCA (PDF, NF Z 42-025).
+
+### Notes
+- Backend requis : Scell.io v0.6.0+ (ledger increvable + attestation nominative).
+- Auth : `tk_*` tenant key. La methode avec `$subTenantId` verifie l'appartenance
+  cross-tenant cote backend (404 si IDOR).
+- Bump : 1.15.0 -> 1.16.0
+
 ## 1.14.0 — 2026-05-03
 
 ### Added

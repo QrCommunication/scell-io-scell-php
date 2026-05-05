@@ -1467,6 +1467,28 @@ $attestation = $api->fiscal()->attestation(): FiscalAttestation;
 $pdf         = $api->fiscal()->attestationDownload(): string;  // binary PDF
 ```
 
+### ISCA Self-Attestation NOMINATIVE (since v1.16.0)
+
+PDF inclut l'identite du beneficiaire (legal_name, SIRET, TVA, adresse, contact,
+statut KYB/KYC) + nom + version du logiciel + identite de l'editeur. Le hash
+SHA-256 couvre le bloc beneficiaire — preuve cryptographique de la
+non-transferabilite (deux beneficiaires distincts = deux hashes distincts).
+
+```php
+// Auto-attestation pour le tenant authentifie (donnees KYB)
+$tenantPdf = $api->fiscal()->iscaSelfAttestationDownload(): string; // binary PDF
+file_put_contents('attestation-tenant.pdf', $tenantPdf);
+
+// Auto-attestation pour un sub_tenant specifique
+// 404 si introuvable ou n'appartient pas au tenant authentifie (verif IDOR)
+$subPdf = $api->fiscal()->iscaSelfAttestationDownload('019d5ea8-...'): string;
+file_put_contents('attestation-sub-tenant.pdf', $subPdf);
+
+// Documents de conformite (non-nominatifs)
+$measures = $api->fiscal()->iscaMeasuresRegisterDownload(): string; // binary PDF
+$dossier  = $api->fiscal()->iscaTechnicalDossierDownload(): string; // binary PDF
+```
+
 ### Ledger Entries
 
 ```php
