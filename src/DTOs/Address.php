@@ -16,6 +16,13 @@ readonly class Address
         public ?string $line2 = null,
         public string $country = 'FR',
         public ?string $region = null,
+        /**
+         * Nom du destinataire (Factur-X BT-74 quand utilise pour une
+         * shipping address). Optionnel : sur une billing address le nom
+         * du buyer suffit, sur une shipping address ce champ permet
+         * d'identifier le site/destinataire (ex: "Entrepot Lyon").
+         */
+        public ?string $name = null,
     ) {}
 
     /**
@@ -30,6 +37,7 @@ readonly class Address
             line2: $data['line2'] ?? $data['address_line2'] ?? null,
             country: $data['country'] ?? 'FR',
             region: $data['region'] ?? $data['country_subdivision'] ?? null,
+            name: $data['name'] ?? null,
         );
     }
 
@@ -39,6 +47,7 @@ readonly class Address
     public function toArray(): array
     {
         return array_filter([
+            'name' => $this->name,
             'line1' => $this->line1,
             'line2' => $this->line2,
             'postal_code' => $this->postalCode,
