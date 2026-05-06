@@ -77,4 +77,47 @@ class InvoiceTemplateResource
         $response = $this->http->put("invoice-templates/{$id}/default");
         return InvoiceTemplate::fromArray($response['data']);
     }
+
+    /**
+     * Upload un logo pour le template (multipart S3).
+     *
+     * Formats acceptes : jpeg, png, webp, svg/svgz. Max 2MB.
+     * Le logo est stocke sur S3 avec ACL public, scope par tenant.
+     *
+     * @param string $id Template UUID
+     * @param resource|string $logo Resource (fopen) ou path (string) du fichier
+     * @param string|null $filename Filename optionnel (default: extrait du path)
+     * @return InvoiceTemplate Le template avec le nouveau logo_url
+     *
+     * @example
+     * ```php
+     * // Depuis un path
+     * $tpl = $client->invoiceTemplates()->uploadLogo($id, '/path/to/logo.png');
+     *
+     * // Depuis une resource
+     * $fp = fopen('/path/to/logo.svg', 'rb');
+     * $tpl = $client->invoiceTemplates()->uploadLogo($id, $fp, 'logo.svg');
+     * ```
+     *
+     * @since 1.18.0
+     */
+    public function uploadLogo(string $id, $logo, ?string $filename = null): InvoiceTemplate
+    {
+        // Si on recoit un path string, ouvrir la resource
+        if (is_string($logo)) {
+            $filename ??= basename($logo);
+            $logo = fopen($logo, 'rb');
+            if ($logo === false) {
+                throw new \RuntimeException("Impossible d'ouvrir le fichier logo");
+            }
+        }
+
+        $response = $this->http->postMultipart("invoice-templates/{$id}/logo", [[
+            'name' => 'logo',
+            'contents' => $logo,
+            'filename' => $filename ?? 'logo',
+        ]]);
+
+        return InvoiceTemplate::fromArray($response['data']);
+    }
 }

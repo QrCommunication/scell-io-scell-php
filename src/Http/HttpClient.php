@@ -139,6 +139,31 @@ class HttpClient
     }
 
     /**
+     * Effectue une requete POST en multipart/form-data.
+     *
+     * Utilisez ceci pour les uploads de fichiers (logo, attestations, etc.)
+     *
+     * @param array<int, array{name: string, contents: mixed, filename?: string, headers?: array<string,string>}> $multipart
+     * @return array<string, mixed>
+     * @throws ScellException
+     *
+     * @example
+     * ```php
+     * $client->postMultipart('invoice-templates/abc/logo', [[
+     *     'name' => 'logo',
+     *     'contents' => fopen('/path/to/logo.png', 'rb'),
+     *     'filename' => 'logo.png',
+     * ]]);
+     * ```
+     */
+    public function postMultipart(string $path, array $multipart): array
+    {
+        return $this->request('POST', $path, [
+            RequestOptions::MULTIPART => $multipart,
+        ]);
+    }
+
+    /**
      * Effectue une requete GET et retourne le contenu brut (binaire).
      *
      * Utile pour telecharger des fichiers (PDF, XML, etc.)

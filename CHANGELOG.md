@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.17.0 — 2026-05-06
+
+### Added
+- **`$client->invoiceTemplates()->uploadLogo($id, $file, $filename = null)`** —
+  upload d'un logo pour un template (multipart S3). Accepte un path string
+  (auto-fopen) ou une resource. Formats : jpeg, png, webp, svg/svgz. Max 2MB.
+  Retourne le template avec le nouveau `logo_url` (URL publique CDN).
+- **`HttpClient::postMultipart($path, $multipart)`** — primitive Guzzle
+  multipart, reutilise auth/timeout/error handling.
+
+### Backend requirements
+Backend Scell.io v0.7.0+ (endpoint `POST /v1/invoice-templates/{id}/logo`).
+
+### Use case
+Permet aux integrateurs de configurer le branding (logo + couleurs +
+mentions custom) **une fois pour toutes** via SDK, sans avoir besoin de
+re-passer ces parametres sur chaque facture. Override par-facture reste
+prioritaire sur les defauts du template.
+
+```php
+// Upload du logo une fois pour toutes
+$tpl = $client->invoiceTemplates()->uploadLogo(
+    $templateId,
+    '/path/to/logo.png'
+);
+
+// Configurer les couleurs / mentions
+$client->invoiceTemplates()->update($templateId, [
+    'primary_color' => '#1F2937',
+    'accent_color' => '#6366F1',
+    'footer_text' => 'Mentions legales custom',
+]);
+
+// Marquer comme template tenant default
+$client->invoiceTemplates()->markDefault($templateId);
+```
+
 ## 1.16.0 — 2026-05-06
 
 ### Added
