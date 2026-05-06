@@ -316,14 +316,34 @@ class InvoiceResource
             ? $data['seller_address']->toArray()
             : $data['seller_address'];
 
-        // Acheteur — siret optional en B2C
+        // Acheteur — deux modes :
+        //   1. buyer_id : reference le registre Buyer existant. Les autres
+        //      champs buyer_* deviennent optionnels (snapshot pris du registre).
+        //   2. buyer_* a plat : l'API upsert un Buyer dans le registre par
+        //      SIRET (B2B) ou email (B2C / fallback) avant de snapshoter.
+        if (isset($data['buyer_id'])) {
+            $payload['buyer_id'] = $data['buyer_id'];
+        }
         if (isset($data['buyer_siret'])) {
             $payload['buyer_siret'] = $data['buyer_siret'];
         }
-        $payload['buyer_name'] = $data['buyer_name'];
-        $payload['buyer_address'] = $data['buyer_address'] instanceof Address
-            ? $data['buyer_address']->toArray()
-            : $data['buyer_address'];
+        if (isset($data['buyer_name'])) {
+            $payload['buyer_name'] = $data['buyer_name'];
+        }
+        if (isset($data['buyer_address'])) {
+            $payload['buyer_address'] = $data['buyer_address'] instanceof Address
+                ? $data['buyer_address']->toArray()
+                : $data['buyer_address'];
+        }
+
+        // Adresse de livraison (Factur-X BG-13). Optionnelle. Si identique
+        // a buyer_address, l'API ne l'emet pas dans le XML (presomption
+        // EN16931 ship=bill).
+        if (isset($data['buyer_shipping_address'])) {
+            $payload['buyer_shipping_address'] = $data['buyer_shipping_address'] instanceof Address
+                ? $data['buyer_shipping_address']->toArray()
+                : $data['buyer_shipping_address'];
+        }
 
         // Flag B2C : transmettre uniquement si explicitement defini
         if (array_key_exists('buyer_is_individual', $data)) {
@@ -486,6 +506,28 @@ class InvoiceBuilder
     public function asB2c(bool $value = true): self
     {
         $this->data['buyer_is_individual'] = $value;
+        return $this;
+    }
+
+    /**
+     * Reference un acheteur existant du registre par son ID. Quand utilise,
+     * les autres `buyer_*` deviennent optionnels — l'API snapshot l'etat
+     * courant du registre sur la facture emise.
+     */
+    public function buyerId(string $id): self
+    {
+        $this->data['buyer_id'] = $id;
+        return $this;
+    }
+
+    /**
+     * Adresse de livraison (Factur-X BG-13 / BT-71..80). Optionnelle.
+     * Quand identique a l'adresse de facturation, l'API n'emet pas le bloc
+     * SHIP TO dans le XML (presomption EN16931 ship=bill).
+     */
+    public function shippingAddress(Address|array $address): self
+    {
+        $this->data['buyer_shipping_address'] = $address;
         return $this;
     }
 

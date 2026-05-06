@@ -6,6 +6,7 @@ namespace Scell\Sdk;
 
 use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\BillingResource;
+use Scell\Sdk\Resources\BuyerResource;
 use Scell\Sdk\Resources\FiscalResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\OnboardingResource;
@@ -63,6 +64,7 @@ class ScellApiClient
     private ?TenantDirectInvoiceResource $directInvoices = null;
     private ?TenantIncomingInvoiceResource $incomingInvoices = null;
     private ?OnboardingResource $onboarding = null;
+    private ?BuyerResource $buyers = null;
 
     /**
      * Cree une instance du client API.
@@ -206,6 +208,15 @@ class ScellApiClient
     public function onboarding(): OnboardingResource
     {
         return $this->onboarding ??= new OnboardingResource($this->http);
+    }
+
+    /**
+     * Resource pour le registre des acheteurs (scope tenant + sub_tenant).
+     * Reutilisez les buyers via `buyer_id` lors de la creation d'invoices.
+     */
+    public function buyers(): BuyerResource
+    {
+        return $this->buyers ??= new BuyerResource($this->http);
     }
 
     /**

@@ -77,6 +77,18 @@ readonly class Invoice
          * Disponible depuis SDK 1.15.0.
          */
         public float $creditedAmount = 0.0,
+        /**
+         * Soft link vers le registre Buyer (si la facture a ete creee
+         * apres l'introduction du registre, fin avril 2026). NULL pour
+         * les factures historiques. Le snapshot (buyer_*) reste la
+         * source de verite (ISCA immutability).
+         */
+        public ?string $buyerId = null,
+        /**
+         * Adresse de livraison (Factur-X BG-13 / BT-71..80). NULL si
+         * identique a l'adresse de facturation (presomption EN16931).
+         */
+        public ?Address $buyerShippingAddress = null,
     ) {}
 
     /**
@@ -131,6 +143,12 @@ readonly class Invoice
             buyerIsIndividual: (bool) ($data['buyer']['is_individual'] ?? $data['buyer_is_individual'] ?? false),
             creditNotesCount: (int) ($data['credit_notes_count'] ?? 0),
             creditedAmount: (float) ($data['credited_amount'] ?? 0),
+            buyerId: $data['buyer']['id'] ?? $data['buyer_id'] ?? null,
+            buyerShippingAddress: isset($data['buyer']['shipping_address']) && is_array($data['buyer']['shipping_address'])
+                ? Address::fromArray($data['buyer']['shipping_address'])
+                : (isset($data['buyer_shipping_address']) && is_array($data['buyer_shipping_address'])
+                    ? Address::fromArray($data['buyer_shipping_address'])
+                    : null),
         );
     }
 

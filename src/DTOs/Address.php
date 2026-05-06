@@ -15,6 +15,7 @@ readonly class Address
         public string $city,
         public ?string $line2 = null,
         public string $country = 'FR',
+        public ?string $region = null,
     ) {}
 
     /**
@@ -28,6 +29,7 @@ readonly class Address
             city: $data['city'] ?? '',
             line2: $data['line2'] ?? $data['address_line2'] ?? null,
             country: $data['country'] ?? 'FR',
+            region: $data['region'] ?? $data['country_subdivision'] ?? null,
         );
     }
 
@@ -41,6 +43,7 @@ readonly class Address
             'line2' => $this->line2,
             'postal_code' => $this->postalCode,
             'city' => $this->city,
+            'region' => $this->region,
             'country' => $this->country,
         ], fn($value) => $value !== null);
     }

@@ -6,6 +6,7 @@ namespace Scell\Sdk;
 
 use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\BalanceResource;
+use Scell\Sdk\Resources\BuyerResource;
 use Scell\Sdk\Resources\CompanyResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\SignatureResource;
@@ -47,6 +48,7 @@ class ScellClient
     private ?InvoiceResource $invoices = null;
     private ?SignatureResource $signatures = null;
     private ?CompanyResource $companies = null;
+    private ?BuyerResource $buyers = null;
     private ?BalanceResource $balance = null;
     private ?WebhookResource $webhooks = null;
     private ?TenantCreditNoteResource $tenantCreditNotes = null;
@@ -99,6 +101,14 @@ class ScellClient
     public function companies(): CompanyResource
     {
         return $this->companies ??= new CompanyResource($this->http);
+    }
+
+    /**
+     * Resource pour le registre des acheteurs (buyers).
+     */
+    public function buyers(): BuyerResource
+    {
+        return $this->buyers ??= new BuyerResource($this->http);
     }
 
     /**
