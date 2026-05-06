@@ -33,6 +33,12 @@ readonly class Company
         public ?DateTimeImmutable $kycCompletedAt = null,
         public ?DateTimeImmutable $createdAt = null,
         public ?DateTimeImmutable $updatedAt = null,
+        public ?string $iban = null,
+        public ?string $bic = null,
+        public ?string $paymentTermsDefault = null,
+        public ?int $paymentDueDaysDefault = null,
+        public ?string $invoiceFooterDefault = null,
+        public ?string $invoiceNotesDefault = null,
     ) {}
 
     /**
@@ -62,6 +68,12 @@ readonly class Company
             kycCompletedAt: isset($data['kyc_completed_at']) ? new DateTimeImmutable($data['kyc_completed_at']) : null,
             createdAt: isset($data['created_at']) ? new DateTimeImmutable($data['created_at']) : null,
             updatedAt: isset($data['updated_at']) ? new DateTimeImmutable($data['updated_at']) : null,
+            iban: $data['iban'] ?? null,
+            bic: $data['bic'] ?? null,
+            paymentTermsDefault: $data['payment_terms_default'] ?? null,
+            paymentDueDaysDefault: isset($data['payment_due_days_default']) ? (int) $data['payment_due_days_default'] : null,
+            invoiceFooterDefault: $data['invoice_footer_default'] ?? null,
+            invoiceNotesDefault: $data['invoice_notes_default'] ?? null,
         );
     }
 

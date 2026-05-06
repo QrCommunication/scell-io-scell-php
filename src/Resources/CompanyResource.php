@@ -56,7 +56,13 @@ class CompanyResource
      *     country?: string,
      *     phone?: string,
      *     email?: string,
-     *     website?: string
+     *     website?: string,
+     *     iban?: string,
+     *     bic?: string,
+     *     payment_terms_default?: string,
+     *     payment_due_days_default?: int,
+     *     invoice_footer_default?: string,
+     *     invoice_notes_default?: string
      * } $data
      */
     public function create(array $data): Company
@@ -69,7 +75,26 @@ class CompanyResource
      * Met a jour une entreprise.
      *
      * @param string $id ID de l'entreprise
-     * @param array<string, mixed> $data Donnees a mettre a jour
+     * @param array{
+     *     name?: string,
+     *     siret?: string,
+     *     address_line1?: string,
+     *     postal_code?: string,
+     *     city?: string,
+     *     vat_number?: string,
+     *     legal_form?: string,
+     *     address_line2?: string,
+     *     country?: string,
+     *     phone?: string,
+     *     email?: string,
+     *     website?: string,
+     *     iban?: string,
+     *     bic?: string,
+     *     payment_terms_default?: string,
+     *     payment_due_days_default?: int,
+     *     invoice_footer_default?: string,
+     *     invoice_notes_default?: string
+     * } $data Donnees a mettre a jour
      */
     public function update(string $id, array $data): Company
     {
