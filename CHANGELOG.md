@@ -82,7 +82,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `InvoiceBuilder::invoiceNumber()` marked `@deprecated` — invoice numbers are server-generated since v1.9.0; the method is kept for backward compatibility but has no effect
-- NF525 terminology replaced with ISCA across all PHPDoc comments and documentation
+- Legacy fiscal certification terminology replaced with ISCA across all PHPDoc comments and documentation
 - `ScellTenantClient` now exposes `onboarding()` accessor returning `OnboardingResource`, consistent with `ScellApiClient`
 - `HttpClient::SDK_VERSION` bumped to `1.11.0`
 - PHPDoc examples updated: `sk_live_*`/`sk_test_*` replaced with `tk_live_*`/`tk_test_*` throughout
@@ -107,7 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **FiscalResource ISCA document downloads**: new download methods for ISCA compliance documents
-- Renamed all internal NF525 references to ISCA (conformite ISCA)
+- Renamed legacy fiscal certification references to ISCA (conformite ISCA)
 
 ## [1.9.0] - 2026-03-30
 

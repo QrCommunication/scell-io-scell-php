@@ -44,7 +44,7 @@ buyer is a private individual (no SIRET / SIREN / VAT / legal_id).
   commerce article L441-10 (late payment penalties = 3x legal interest rate +
   fixed recovery indemnity of 40 EUR) are automatically removed.
 - **Credit notes** : credit notes inherit `buyer_is_individual` from their
-  source invoice. NF525 / ISCA fiscal compliance is preserved.
+  source invoice. ISCA fiscal compliance is preserved.
 
 ### How to use
 
@@ -1427,7 +1427,7 @@ $amounts    = $tenant->directCreditNotes()->remainingCreditable('uuid');
 
 Accessed via `$api->fiscal()` or `$tenant->fiscal()`.
 
-Implements LF 2026 fiscal compliance (ISCA — previously NF525).
+Implements LF 2026 fiscal compliance (ISCA, Article 286-I-3° bis CGI).
 
 ### Compliance Dashboard
 
@@ -2451,7 +2451,7 @@ API keys changed from `sk_live_*`/`sk_test_*` to `tk_live_*`/`tk_test_*`. Update
 
 ### v1.9.2 — ISCA terminology
 
-NF525 terminology replaced with ISCA throughout the codebase. Affects: PHPDoc comments, method names in FiscalResource (e.g., `downloadMeasuresRegister()`, `downloadTechnicalDossier()`, `downloadSelfAttestation()`).
+Legacy fiscal certification terminology replaced with ISCA throughout the codebase. Affects: PHPDoc comments, method names in FiscalResource (e.g., `downloadMeasuresRegister()`, `downloadTechnicalDossier()`, `downloadSelfAttestation()`).
 
 ### v1.10.0 — OnboardingResource
 
