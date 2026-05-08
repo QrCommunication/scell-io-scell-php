@@ -72,6 +72,54 @@ class TenantInvoiceResource
     }
 
     /**
+     * Telecharge le fichier binaire d'une facture appartenant a un sub-tenant.
+     *
+     * Scope strict : la facture doit appartenir au sub-tenant ET au tenant
+     * authentifie. Sinon 404. Le format defaut est `facturx` (PDF/A-3 avec
+     * XML CII embarque).
+     *
+     * @param  string  $subTenantId  UUID du sub-tenant
+     * @param  string  $invoiceId    UUID de la facture
+     * @param  string  $format       'facturx' (defaut) | 'pdf' | 'xml'
+     * @return string  Contenu binaire (PDF ou XML)
+     *
+     * @throws \Scell\Sdk\Exceptions\ScellException 404 si facture introuvable
+     *                                              ou fichier non disponible,
+     *                                              422 si brouillon ou format invalide.
+     *
+     * @example
+     * ```php
+     * $pdf = $client->tenantInvoices()->downloadForSubTenant($subTenantId, $invoiceId);
+     * file_put_contents('facture.pdf', $pdf);
+     * ```
+     */
+    public function downloadForSubTenant(string $subTenantId, string $invoiceId, string $format = 'facturx'): string
+    {
+        return $this->http->getRaw(
+            "tenant/sub-tenants/{$subTenantId}/invoices/{$invoiceId}/download",
+            ['format' => $format],
+        );
+    }
+
+    /**
+     * Telecharge le fichier binaire d'une facture du tenant (sans scope sub-tenant).
+     *
+     * Alias pratique pour les factures qui ne sont pas associees a un sub-tenant
+     * ou pour lesquelles le caller n'a pas le subTenantId. Le scope tenant_id est
+     * verifie cote serveur via la company associee.
+     *
+     * @param  string  $invoiceId  UUID de la facture
+     * @param  string  $format     'facturx' (defaut) | 'pdf' | 'xml'
+     * @return string  Contenu binaire (PDF ou XML)
+     */
+    public function download(string $invoiceId, string $format = 'facturx'): string
+    {
+        return $this->http->getRaw("tenant/invoices/{$invoiceId}/download", [
+            'format' => $format,
+        ]);
+    }
+
+    /**
      * Cree une facture pour un sub-tenant.
      *
      * @param string $subTenantId UUID du sub-tenant

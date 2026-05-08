@@ -92,6 +92,36 @@ class TenantDirectInvoiceResource
     }
 
     /**
+     * Telecharge le fichier binaire d'une facture du tenant (sans sub-tenant).
+     *
+     * Retourne le contenu binaire (PDF/A-3 par defaut, contenant le XML CII embarque).
+     * Le scope tenant_id est verifie cote serveur via la company associee.
+     *
+     * @param  string  $invoiceId  UUID de la facture
+     * @param  string  $format     'facturx' (defaut) | 'pdf' | 'xml'
+     * @return string  Contenu binaire (PDF ou XML)
+     *
+     * @throws \Scell\Sdk\Exceptions\ScellException 404 si facture introuvable
+     *                                              ou fichier non disponible,
+     *                                              422 si brouillon ou format invalide.
+     *
+     * @example
+     * ```php
+     * $pdf = $client->tenantInvoices()->download($invoiceId);
+     * file_put_contents('facture.pdf', $pdf);
+     *
+     * // XML pur
+     * $xml = $client->tenantInvoices()->download($invoiceId, 'xml');
+     * ```
+     */
+    public function download(string $invoiceId, string $format = 'facturx'): string
+    {
+        return $this->http->getRaw("tenant/invoices/{$invoiceId}/download", [
+            'format' => $format,
+        ]);
+    }
+
+    /**
      * Cree une nouvelle facture directe.
      *
      * La numerotation est automatique et geree par le systeme.

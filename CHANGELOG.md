@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+
+## [2.1.0] - 2026-05-08
+
+### Added
+
+- `TenantDirectInvoiceResource::download(string $invoiceId, string $format = 'facturx'): string` — telecharge le binary d'une facture du tenant. Comble le gap v2 ou `tenantInvoices` n'avait pas de download (l'endpoint v1 `/tenant/invoices/{id}/download` etait supprime, et le v2 company-scoped `/invoices/{id}/download/pdf` retournait 403 COMPANY_REQUIRED avec une cle tenant).
+- `TenantInvoiceResource::download(string $invoiceId, string $format = 'facturx'): string` — alias direct (sans subTenantId).
+- `TenantInvoiceResource::downloadForSubTenant(string $subTenantId, string $invoiceId, string $format = 'facturx'): string` — variant scope sub-tenant strict (404 si la facture n'appartient pas au sub-tenant ET au tenant).
+- Support des 3 formats : `'facturx'` (defaut, PDF/A-3 + XML CII embarque), `'pdf'` (rendu visuel pur), `'xml'` (UBL ou CII brut).
+
+### Backend endpoints (consommes par ces methodes)
+
+- `GET /api/v1/tenant/invoices/{invoiceId}/download[?format=]`
+- `GET /api/v1/tenant/sub-tenants/{subTenantId}/invoices/{invoiceId}/download[?format=]`
+
+Le scope tenant_id est verifie cote serveur via la company associee a la facture (ownership chain : invoice → company → tenant). Le scope sub-tenant rajoute un filtre strict sur `companies.sub_tenant_id`.
+
+### Tag
+
+```bash
+git tag -a v2.1.0 -m "feat(invoices): add tenant-scoped invoice download (fix v2 SDK gap)"
+git push origin v2.1.0
+```
+
+### Notes
+
+- Pas de breaking change. Composer ne lit pas `version` depuis composer.json (regle stricte du projet : tag Git only).
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## 2.0.0 — 2026-05-08
