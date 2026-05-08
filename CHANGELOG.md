@@ -5,6 +5,102 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.0.0 — 2026-05-08
+
+Major release. Aligne le SDK PHP sur Scell.io API v2 : nouveau modele
+d'onboarding pilote par SuperPDP, suppression du champ legacy
+`kyc_status` sur `SubTenant`, ajout de 5 nouveaux endpoints (lookup
+Sirene, creation SubTenant via widget, statut SuperPDP, refresh,
+resume URL).
+
+> Aucune entree `version` n'est ajoutee a `composer.json`. Composer lit
+> la version depuis le tag Git `v2.0.0` (regle stricte projet).
+
+### Breaking Changes
+
+- **`SubTenant` n'expose plus `kycStatus` / `kycVerifiedAt` / `kycDelegated`.**
+  Le backend ne renvoie plus ces champs.
+- **Nouveau champ obligatoire `OnboardingStatus $onboardingStatus`** sur
+  le constructeur de `SubTenant` (BackedEnum, 6 valeurs).
+- L'endpoint `refreshSuperPDPStatus` est rate-limite a 1 requete / minute /
+  sub-tenant. Le 429 est expose comme `RateLimitException`.
+
+### Added
+
+- **`Scell\Sdk\Enums\OnboardingStatus`** — BackedEnum 6 valeurs :
+  `PendingSuperPDP`, `SuperPDPRedirected`, `SuperPDPAuthorized`,
+  `SuperPDPPendingReview`, `Active`, `SuperPDPFailed`. Helpers
+  `isTerminal()` / `isInProgress()`.
+- **Nouveaux DTOs** :
+  - `RecommendedAction` (i18n FR/EN structure + helpers
+    `title($locale)`, `message($locale)`, `ctaLabel($locale)`)
+  - `SubTenantSummary` (combine `SubTenant` + `RecommendedAction`)
+  - `CompanyData` (resultat lookup Sirene normalise)
+  - `SireneLookupResult` (`data: ?CompanyData`, `sireneLookupSucceeded: bool`)
+  - `CreateSubTenantResult` (`subTenant`, `recommendedAction`, `resumeUrl`)
+  - `ResumeUrlResult` (`resumeUrl`, `expiresAt: DateTimeImmutable`)
+- **`SubTenant`** nouveaux champs : `onboardingStatus`,
+  `superpdpCompanyVerificationStatus`,
+  `superpdpUserIdentityVerificationStatus`, `lastPolledAt`,
+  `resumeUrl`, `contactFirstName`, `contactLastName`. Helpers
+  `isOnboarded()`, `isPending()`, `hasFailed()`.
+- **`SubTenantResource::getSuperPDPStatus($id): SubTenantSummary`**
+  — `GET /sub-tenants/{id}/superpdp-status`.
+- **`SubTenantResource::refreshSuperPDPStatus($id): SubTenantSummary`**
+  — `POST /sub-tenants/{id}/superpdp-status/refresh` (rate-limite).
+- **`SubTenantResource::getResumeUrl($id): ResumeUrlResult`**
+  — `POST /sub-tenants/{id}/resume-url`.
+- **`OnboardingResource::lookupSirene($siret): SireneLookupResult`**
+  — `POST /widget/onboarding/sirene/lookup` (publishable-key).
+- **`OnboardingResource::createSubTenant($payload): CreateSubTenantResult`**
+  — `POST /widget/onboarding/sub-tenant` (publishable-key). Accepte
+  un `CompanyData` instance ou un array brut.
+
+### Migration Guide
+
+Remplacer `kycStatus` par `onboardingStatus` :
+
+| Legacy `kycStatus` | Nouveau `OnboardingStatus`                                                              |
+|--------------------|-----------------------------------------------------------------------------------------|
+| `'pending'`        | `PendingSuperPDP`, `SuperPDPRedirected`, `SuperPDPAuthorized`, `SuperPDPPendingReview`  |
+| `'verified'`       | `Active`                                                                                |
+| `'rejected'`       | `SuperPDPFailed`                                                                        |
+
+```php
+// AVANT (v1.x)
+if ($subTenant->kycStatus === 'verified') { /* ... */ }
+
+// APRES (v2.0)
+use Scell\Sdk\Enums\OnboardingStatus;
+if ($subTenant->onboardingStatus === OnboardingStatus::Active) { /* ... */ }
+// ou
+if ($subTenant->isOnboarded()) { /* ... */ }
+```
+
+Pour l'UI, preferer le `RecommendedAction` localise :
+
+```php
+$summary = $api->subTenants()->getSuperPDPStatus($id);
+if ($summary->recommendedAction) {
+    $title = $summary->recommendedAction->title('fr');
+    $cta   = $summary->recommendedAction->ctaUrl;
+}
+```
+
+### Backend requirements
+
+Scell.io API v2.0+ (release 2026-05-08). Les nouveaux endpoints
+retournent 404 sur les backends anterieurs.
+
+### Tag Git
+
+Le tag a creer pour declencher Packagist :
+
+```bash
+git tag -a v2.0.0 -m "feat: API v2 onboarding (SuperPDP) + breaking change kyc_status -> onboarding_status"
+git push origin v2.0.0
+```
+
 ## 1.17.0 — 2026-05-06
 
 ### Added

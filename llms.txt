@@ -1,5 +1,114 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 1.11.2 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.0.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.0.0 (2026-05-08) — Breaking Changes
+
+Major release. Aligne le SDK PHP sur Scell.io API v2 (onboarding pilote
+par SuperPDP). Backend requis : Scell.io API v2.0+.
+
+> Pas d'entree `version` dans `composer.json`. Composer lit la version
+> depuis le tag Git `v2.0.0`.
+
+### What changed
+
+- `SubTenant` n'expose plus `kycStatus` / `kycVerifiedAt` / `kycDelegated`.
+- Nouveau champ obligatoire `OnboardingStatus $onboardingStatus` (BackedEnum, 6 valeurs).
+- Nouveaux champs SubTenant : `superpdpCompanyVerificationStatus`,
+  `superpdpUserIdentityVerificationStatus`, `lastPolledAt`,
+  `resumeUrl`, `contactFirstName`, `contactLastName`.
+- 5 nouveaux endpoints (lookup Sirene, creation widget, statut SuperPDP, refresh, resume URL).
+
+### Migration: `kycStatus` → `onboardingStatus`
+
+| Legacy `kycStatus`  | Nouveau `OnboardingStatus`                                                                          |
+|---------------------|-----------------------------------------------------------------------------------------------------|
+| `'pending'`         | `PendingSuperPDP`, `SuperPDPRedirected`, `SuperPDPAuthorized`, `SuperPDPPendingReview`              |
+| `'verified'`        | `Active`                                                                                            |
+| `'rejected'`        | `SuperPDPFailed`                                                                                    |
+
+```php
+// AVANT (v1.x)
+if ($subTenant->kycStatus === 'verified') { /* ... */ }
+
+// APRES (v2.0)
+use Scell\Sdk\Enums\OnboardingStatus;
+if ($subTenant->onboardingStatus === OnboardingStatus::Active) { /* ... */ }
+// ou
+if ($subTenant->isOnboarded()) { /* ... */ }
+```
+
+## Onboarding v2 — Widget endpoints (publishable-key)
+
+```php
+use Scell\Sdk\ScellApiClient;
+use Scell\Sdk\DTOs\CompanyData;
+
+$publicClient = ScellApiClient::withApiKey('pk_live_...');
+
+// 1. Sirene lookup
+$lookup = $publicClient->onboarding()->lookupSirene('12345678901234');
+// $lookup->data : ?CompanyData
+// $lookup->sireneLookupSucceeded : bool
+
+// 2. Create sub-tenant from widget data
+$result = $publicClient->onboarding()->createSubTenant([
+    'external_id' => 'crm-42',
+    'company' => $lookup->data,
+    'identity' => [
+        'first_name' => 'Marie',
+        'last_name' => 'Dupont',
+        'email' => 'marie@acme.fr',
+    ],
+    'locale' => 'fr',
+]);
+// $result->subTenant : SubTenant
+// $result->recommendedAction : ?RecommendedAction
+// $result->resumeUrl : ?string  (signed URL valid 7 days)
+```
+
+## SubTenants SuperPDP status v2 — Bearer auth
+
+```php
+use Scell\Sdk\Exceptions\RateLimitException;
+
+// Cached status + i18n recommended action
+$summary = $api->subTenants()->getSuperPDPStatus($subTenantId);
+// $summary->subTenant : SubTenant
+// $summary->recommendedAction : ?RecommendedAction
+echo $summary->recommendedAction?->title('fr');
+
+// Force fresh poll (rate-limited 1/min/sub-tenant)
+try {
+    $fresh = $api->subTenants()->refreshSuperPDPStatus($subTenantId);
+} catch (RateLimitException $e) {
+    // backoff or fall back to getSuperPDPStatus()
+}
+
+// Regenerate signed resume URL (valid 7 days)
+$resume = $api->subTenants()->getResumeUrl($subTenantId);
+// $resume->resumeUrl : string
+// $resume->expiresAt : DateTimeImmutable
+```
+
+## RecommendedAction (i18n FR/EN)
+
+```php
+final readonly class RecommendedAction {
+    public string $code;
+    public string $severity;       // 'info' | 'warning' | 'critical' | 'success'
+    public string $titleFr; public string $titleEn;
+    public string $messageFr; public string $messageEn;
+    public string $ctaLabelFr; public string $ctaLabelEn;
+    public ?string $ctaUrl;
+    public bool $dismissible;
+    public function title(string $locale = 'fr'): string;
+    public function message(string $locale = 'fr'): string;
+    public function ctaLabel(string $locale = 'fr'): string;
+}
+```
+
+---
+
 
 ## Overview
 

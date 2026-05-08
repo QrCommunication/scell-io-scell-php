@@ -4,39 +4,15 @@ declare(strict_types=1);
 
 namespace Scell\Sdk\Resources;
 
+use Scell\Sdk\DTOs\CompanyData;
+use Scell\Sdk\DTOs\CreateSubTenantResult;
 use Scell\Sdk\DTOs\OnboardingSession;
+use Scell\Sdk\DTOs\SireneLookupResult;
 use Scell\Sdk\Http\HttpClient;
 
 /**
- * Resource pour l'onboarding via SuperPDP OAuth2 Authorization Code.
- *
- * Flux en 3 etapes :
- * 1. `createSession()` — Initialise la session d'onboarding
- * 2. `getSuperPDPAuthorizeUrl()` — Obtient l'URL de redirection OAuth2 SuperPDP
- * 3. `superpdpCallback()` — Echange le code OAuth2 et finalise l'onboarding
- *
- * @example
- * ```php
- * $api = ScellApiClient::withApiKey('pk_live_...');
- *
- * // Etape 1 : creer la session
- * $session = $api->onboarding()->createSession([
- *     'mode' => 'redirect',
- *     'callback_url' => 'https://myapp.com/onboarding/callback',
- *     'external_id' => 'user_123',
- * ]);
- *
- * // Etape 2 : obtenir l'URL d'autorisation SuperPDP
- * $result = $api->onboarding()->getSuperPDPAuthorizeUrl($session->id);
- * header('Location: ' . $result['authorize_url']);
- *
- * // Etape 3 : apres redirection OAuth2, finaliser
- * $result = $api->onboarding()->superpdpCallback(
- *     sessionId: $session->id,
- *     code: $_GET['code'],
- *     state: $_GET['state'],
- * );
- * ```
+ * Resource pour l'onboarding via SuperPDP OAuth2 Authorization Code,
+ * et les endpoints widget publishable-key (depuis v2.0.0).
  */
 class OnboardingResource
 {
@@ -61,9 +37,6 @@ class OnboardingResource
         return OnboardingSession::fromArray($response['data']);
     }
 
-    /**
-     * Recupere une session d'onboarding par son ID.
-     */
     public function getSession(string $sessionId): OnboardingSession
     {
         $response = $this->http->get("onboarding/sessions/{$sessionId}");
@@ -71,11 +44,6 @@ class OnboardingResource
     }
 
     /**
-     * Obtient l'URL d'autorisation OAuth2 SuperPDP pour la session.
-     *
-     * Redirigez l'utilisateur vers `authorize_url` pour demarrer le flux OAuth2.
-     *
-     * @param string $sessionId UUID de la session d'onboarding
      * @return array{authorize_url: string, state: string}
      */
     public function getSuperPDPAuthorizeUrl(string $sessionId): array
@@ -86,13 +54,6 @@ class OnboardingResource
     }
 
     /**
-     * Finalise l'onboarding apres le retour OAuth2 SuperPDP.
-     *
-     * A appeler avec les parametres `code` et `state` recus depuis la redirection OAuth2.
-     *
-     * @param string $sessionId UUID de la session d'onboarding
-     * @param string $code Code d'autorisation OAuth2 retourne par SuperPDP
-     * @param string $state Parametre state CSRF retourne par SuperPDP
      * @return array{message: string, data: array}
      */
     public function superpdpCallback(string $sessionId, string $code, string $state): array
@@ -102,5 +63,63 @@ class OnboardingResource
             'code' => $code,
             'state' => $state,
         ]);
+    }
+
+    // ==========================================================================
+    // Widget endpoints (publishable-key auth, since v2.0.0)
+    // ==========================================================================
+
+    /**
+     * Recherche d'une societe francaise par SIRET via Sirene.
+     *
+     * Authentification publishable-key. A appeler depuis le widget
+     * partenaire pour pre-remplir le formulaire d'onboarding.
+     *
+     * @example
+     * ```php
+     * $publicClient = ScellApiClient::withApiKey('pk_live_...');
+     * $result = $publicClient->onboarding()->lookupSirene('12345678901234');
+     * if ($result->data !== null) {
+     *     echo $result->data->name;
+     * }
+     * ```
+     */
+    public function lookupSirene(string $siret): SireneLookupResult
+    {
+        $payload = $this->http->post('widget/onboarding/sirene/lookup', [
+            'siret' => preg_replace('/\s+/', '', $siret),
+        ]);
+
+        return SireneLookupResult::fromArray($payload);
+    }
+
+    /**
+     * Cree un SubTenant depuis les donnees collectees par le widget
+     * (publishable-key auth).
+     *
+     * @param array{
+     *     external_id?: string,
+     *     company: array<string, mixed>|CompanyData,
+     *     identity: array{
+     *         first_name: string,
+     *         last_name: string,
+     *         email: string,
+     *         phone?: string,
+     *         birth_date?: string,
+     *         job_title?: string,
+     *     },
+     *     locale?: 'fr'|'en',
+     *     metadata?: array<string, mixed>,
+     * } $payload
+     */
+    public function createSubTenant(array $payload): CreateSubTenantResult
+    {
+        if (isset($payload['company']) && $payload['company'] instanceof CompanyData) {
+            $payload['company'] = $payload['company']->toArray();
+        }
+
+        $response = $this->http->post('widget/onboarding/sub-tenant', $payload);
+
+        return CreateSubTenantResult::fromArray($response);
     }
 }

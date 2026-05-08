@@ -5,31 +5,17 @@ declare(strict_types=1);
 namespace Scell\Sdk\Resources;
 
 use Scell\Sdk\DTOs\PaginatedResult;
+use Scell\Sdk\DTOs\ResumeUrlResult;
 use Scell\Sdk\DTOs\SubTenant;
+use Scell\Sdk\DTOs\SubTenantSummary;
 use Scell\Sdk\Http\HttpClient;
 
 /**
  * Resource pour les sub-tenants (clients finaux).
  *
- * Permet de gerer les clients finaux d'un tenant partenaire.
- *
- * @example
- * ```php
- * $resource = new SubTenantResource($httpClient);
- *
- * // Lister les sub-tenants
- * $subTenants = $resource->list(['per_page' => 50]);
- *
- * // Creer un sub-tenant
- * $subTenant = $resource->create([
- *     'external_id' => 'CLIENT-001',
- *     'name' => 'Mon Client',
- *     'siret' => '12345678901234',
- * ]);
- *
- * // Rechercher par ID externe
- * $subTenant = $resource->findByExternalId('CLIENT-001');
- * ```
+ * v2.0.0 : ajoute les endpoints `getSuperPDPStatus`,
+ * `refreshSuperPDPStatus` et `getResumeUrl` qui exposent le cycle
+ * d'onboarding SuperPDP enrichi.
  */
 class SubTenantResource
 {
@@ -42,22 +28,13 @@ class SubTenantResource
      *
      * @param array{
      *     search?: string,
-     *     status?: string,
+     *     onboarding_status?: string,
      *     per_page?: int,
      *     page?: int,
      *     sort?: string,
      *     order?: string
-     * } $filters Filtres optionnels
+     * } $filters
      * @return PaginatedResult<SubTenant>
-     *
-     * @example
-     * ```php
-     * // Liste paginee
-     * $subTenants = $resource->list(['per_page' => 25, 'page' => 1]);
-     *
-     * // Avec recherche
-     * $subTenants = $resource->list(['search' => 'SARL']);
-     * ```
      */
     public function list(array $filters = []): PaginatedResult
     {
@@ -67,36 +44,25 @@ class SubTenantResource
     }
 
     /**
-     * Cree un nouveau sub-tenant.
+     * Cree un nouveau sub-tenant (server-to-server).
      *
      * @param array{
      *     external_id?: string,
      *     name: string,
-     *     siret: string,
+     *     siret?: string,
      *     siren?: string,
      *     vat_number?: string,
      *     email?: string,
      *     phone?: string,
+     *     contact_first_name?: string,
+     *     contact_last_name?: string,
      *     address_line1?: string,
      *     address_line2?: string,
      *     postal_code?: string,
      *     city?: string,
      *     country?: string,
      *     metadata?: array
-     * } $data Donnees du sub-tenant
-     *
-     * @example
-     * ```php
-     * $subTenant = $resource->create([
-     *     'external_id' => 'CLIENT-001',
-     *     'name' => 'Mon Client SARL',
-     *     'siret' => '12345678901234',
-     *     'email' => 'contact@client.fr',
-     *     'address_line1' => '1 rue de la Paix',
-     *     'postal_code' => '75001',
-     *     'city' => 'Paris',
-     * ]);
-     * ```
+     * } $data
      */
     public function create(array $data): SubTenant
     {
@@ -105,16 +71,6 @@ class SubTenantResource
         return SubTenant::fromArray($response['data']);
     }
 
-    /**
-     * Recupere un sub-tenant par son ID.
-     *
-     * @param string $id UUID du sub-tenant
-     *
-     * @example
-     * ```php
-     * $subTenant = $resource->get('550e8400-e29b-41d4-a716-446655440000');
-     * ```
-     */
     public function get(string $id): SubTenant
     {
         $response = $this->http->get("tenant/sub-tenants/{$id}");
@@ -125,30 +81,7 @@ class SubTenantResource
     /**
      * Met a jour un sub-tenant.
      *
-     * @param string $id UUID du sub-tenant
-     * @param array{
-     *     external_id?: string,
-     *     name?: string,
-     *     siret?: string,
-     *     siren?: string,
-     *     vat_number?: string,
-     *     email?: string,
-     *     phone?: string,
-     *     address_line1?: string,
-     *     address_line2?: string,
-     *     postal_code?: string,
-     *     city?: string,
-     *     country?: string,
-     *     metadata?: array
-     * } $data Donnees a mettre a jour
-     *
-     * @example
-     * ```php
-     * $subTenant = $resource->update('550e8400-e29b-41d4-a716-446655440000', [
-     *     'email' => 'nouveau@email.fr',
-     *     'phone' => '+33612345678',
-     * ]);
-     * ```
+     * @param array<string, mixed> $data
      */
     public function update(string $id, array $data): SubTenant
     {
@@ -157,37 +90,63 @@ class SubTenantResource
         return SubTenant::fromArray($response['data']);
     }
 
-    /**
-     * Supprime un sub-tenant.
-     *
-     * Attention: Le sub-tenant ne doit pas avoir de factures ou avoirs actifs.
-     *
-     * @param string $id UUID du sub-tenant
-     *
-     * @example
-     * ```php
-     * $resource->delete('550e8400-e29b-41d4-a716-446655440000');
-     * ```
-     */
     public function delete(string $id): void
     {
         $this->http->delete("tenant/sub-tenants/{$id}");
     }
 
-    /**
-     * Recherche un sub-tenant par son ID externe.
-     *
-     * @param string $externalId ID externe (defini lors de la creation)
-     *
-     * @example
-     * ```php
-     * $subTenant = $resource->findByExternalId('CLIENT-001');
-     * ```
-     */
     public function findByExternalId(string $externalId): SubTenant
     {
         $response = $this->http->get("tenant/sub-tenants/by-external-id/{$externalId}");
 
         return SubTenant::fromArray($response['data']);
+    }
+
+    // ==========================================================================
+    // SuperPDP onboarding status (since v2.0.0)
+    // ==========================================================================
+
+    /**
+     * Recupere le statut SuperPDP en cache pour un sub-tenant, plus
+     * l'action recommandee i18n a afficher dans l'UI partenaire.
+     *
+     * @example
+     * ```php
+     * $summary = $api->subTenants()->getSuperPDPStatus($id);
+     * echo $summary->subTenant->onboardingStatus->value;
+     * if ($summary->recommendedAction) {
+     *     echo $summary->recommendedAction->title('fr');
+     * }
+     * ```
+     */
+    public function getSuperPDPStatus(string $id): SubTenantSummary
+    {
+        $response = $this->http->get("sub-tenants/{$id}/superpdp-status");
+
+        return SubTenantSummary::fromArray($response);
+    }
+
+    /**
+     * Force un poll SuperPDP frais pour un sub-tenant.
+     *
+     * Rate-limite cote serveur a 1 requete / minute / sub-tenant. Une
+     * reponse 429 est exposee comme `Scell\Sdk\Exceptions\RateLimitException`.
+     */
+    public function refreshSuperPDPStatus(string $id): SubTenantSummary
+    {
+        $response = $this->http->post("sub-tenants/{$id}/superpdp-status/refresh");
+
+        return SubTenantSummary::fromArray($response);
+    }
+
+    /**
+     * Regenere l'URL signee permettant au sub-tenant de reprendre son
+     * onboarding (valide 7 jours).
+     */
+    public function getResumeUrl(string $id): ResumeUrlResult
+    {
+        $response = $this->http->post("sub-tenants/{$id}/resume-url");
+
+        return ResumeUrlResult::fromArray($response);
     }
 }
