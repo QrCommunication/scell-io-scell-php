@@ -128,6 +128,20 @@ class HttpClient
     }
 
     /**
+     * Effectue une requete PATCH (mise a jour partielle).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     * @throws ScellException
+     */
+    public function patch(string $path, array $data = []): array
+    {
+        return $this->request('PATCH', $path, [
+            RequestOptions::JSON => $data,
+        ]);
+    }
+
+    /**
      * Effectue une requete DELETE.
      *
      * @return array<string, mixed>
