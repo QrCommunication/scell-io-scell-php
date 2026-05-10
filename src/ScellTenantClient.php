@@ -12,6 +12,7 @@ use Scell\Sdk\Resources\TenantDirectInvoiceResource;
 use Scell\Sdk\Resources\TenantIncomingInvoiceResource;
 use Scell\Sdk\Resources\TenantInvoiceResource;
 use Scell\Sdk\Resources\TenantCreditNoteResource;
+use Scell\Sdk\Resources\TenantSignatureResource;
 use Scell\Sdk\Resources\FiscalResource;
 use Scell\Sdk\Resources\BillingResource;
 use Scell\Sdk\Resources\StatsResource;
@@ -66,6 +67,7 @@ class ScellTenantClient
     private ?TenantIncomingInvoiceResource $incomingInvoices = null;
     private ?TenantInvoiceResource $invoices = null;
     private ?TenantCreditNoteResource $creditNotes = null;
+    private ?TenantSignatureResource $signatures = null;
     private ?FiscalResource $fiscal = null;
     private ?BillingResource $billing = null;
     private ?StatsResource $detailedStats = null;
@@ -337,6 +339,36 @@ class ScellTenantClient
     public function creditNotes(): TenantCreditNoteResource
     {
         return $this->creditNotes ??= new TenantCreditNoteResource($this->http);
+    }
+
+    /**
+     * Resource pour les signatures scope tenant (URL-nested, depuis SDK v2.7.0).
+     *
+     * Endpoints disponibles (auth `X-API-Key sk_*`, sans contrainte company_id) :
+     * - GET /tenant/signatures - Toutes les signatures du tenant (parent + sub-tenants)
+     * - GET /tenant/signatures/{id} - Detail signature scope tenant
+     * - GET /tenant/sub-tenants/{subTenantId}/signatures - Signatures d'un sub-tenant
+     * - GET /tenant/sub-tenants/{subTenantId}/signatures/{id} - Detail scope sub-tenant
+     *
+     * Pour les operations write (create/remind/cancel/download/audit-trail),
+     * passer par `ScellApiClient::signatures()` ou `ScellClient::signatures()`.
+     *
+     * @example
+     * ```php
+     * // Lister toutes les signatures du tenant
+     * $sigs = $tenant->signatures()->list([
+     *     'status'      => 'completed',
+     *     'environment' => 'production',
+     *     'per_page'    => 50,
+     * ]);
+     *
+     * // Limiter a un sub-tenant precis
+     * $subSigs = $tenant->signatures()->listForSubTenant('sub-tenant-uuid');
+     * ```
+     */
+    public function signatures(): TenantSignatureResource
+    {
+        return $this->signatures ??= new TenantSignatureResource($this->http);
     }
 
     /**

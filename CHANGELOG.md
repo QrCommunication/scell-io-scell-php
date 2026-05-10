@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [2.7.0] - 2026-05-10
+
+### Added
+
+- **`TenantSignatureResource`** : nouvelle ressource pour les 4 endpoints URL-nested cote tenant (auth `X-API-Key sk_*` sans contrainte `company_id`) :
+  - `list(array $filters = [])` -> `GET /api/v1/tenant/signatures` (toutes les signatures du tenant : parent + tous sub-tenants)
+  - `get(string $id)` -> `GET /api/v1/tenant/signatures/{id}`
+  - `listForSubTenant(string $subTenantId, array $filters = [])` -> `GET /api/v1/tenant/sub-tenants/{subTenantId}/signatures` (anti-IDOR via middleware `sub-tenant`)
+  - `getForSubTenant(string $subTenantId, string $id)` -> `GET /api/v1/tenant/sub-tenants/{subTenantId}/signatures/{id}`
+- **`ScellTenantClient::signatures()`** : expose la nouvelle ressource (alongside `invoices()`, `creditNotes()`).
+- **`ScellApiClient::tenantSignatures()`** : meme pattern que `tenantInvoices()` pour les integrations server-side qui veulent rester sur un seul client.
+- Filtres de liste : `status` (pending|completed|refused|expired), `environment` (sandbox|production), `per_page` (max 100), `page`. Les valeurs `null` sont filtrees, `SignatureStatus` enum supporte.
+- Tests unitaires `tests/TenantSignatureResourceTest.php` (6 tests) couvrant les 4 endpoints + memoization sur les deux clients.
+
+### Why
+
+Le scope `tenant_id` etait deja accessible via `SignatureResource::list()` (depuis v2.6.0) mais necessitait une cle API attachee a une `company_id`. Les master tenants sans `company_id` (ou souhaitant cross-company) recevaient `403 COMPANY_REQUIRED`. La nouvelle surface URL-nested (alignee sur `/v1/tenant/invoices` et `/v1/tenant/credit-notes`) leve cette contrainte et donne un acces uniforme parent + tous sub-tenants.
+
+### Backward compatibility
+
+100% retro-compatible. `SignatureResource::list()` / `get()` continuent de fonctionner inchanges (auth `api.key` avec `company_id` requise). Les operations write (create, remind, cancel, download, audit-trail) restent sur `/v1/signatures` via `SignatureResource`.
+
 ## [2.6.0] - 2026-05-10
 
 ### Added

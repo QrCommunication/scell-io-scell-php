@@ -17,6 +17,7 @@ use Scell\Sdk\Resources\TenantCreditNoteResource;
 use Scell\Sdk\Resources\TenantDirectInvoiceResource;
 use Scell\Sdk\Resources\TenantIncomingInvoiceResource;
 use Scell\Sdk\Resources\TenantInvoiceResource;
+use Scell\Sdk\Resources\TenantSignatureResource;
 
 /**
  * API Client for server-to-server integration.
@@ -66,6 +67,7 @@ class ScellApiClient
     private ?BillingResource $billing = null;
     private ?TenantCreditNoteResource $creditNotes = null;
     private ?TenantInvoiceResource $tenantInvoices = null;
+    private ?TenantSignatureResource $tenantSignatures = null;
     private ?TenantDirectInvoiceResource $directInvoices = null;
     private ?TenantIncomingInvoiceResource $incomingInvoices = null;
     private ?OnboardingResource $onboarding = null;
@@ -220,6 +222,19 @@ class ScellApiClient
     public function tenantInvoices(): TenantInvoiceResource
     {
         return $this->tenantInvoices ??= new TenantInvoiceResource($this->http);
+    }
+
+    /**
+     * Resource pour les signatures scope tenant (URL-nested, depuis SDK v2.7.0).
+     *
+     * Cible les nouveaux endpoints `GET /tenant/signatures` et
+     * `GET /tenant/sub-tenants/{id}/signatures` (auth `X-API-Key sk_*` sans
+     * contrainte `company_id`). Pour les operations write (create, remind,
+     * cancel, download, audit-trail), continuer d'utiliser `signatures()`.
+     */
+    public function tenantSignatures(): TenantSignatureResource
+    {
+        return $this->tenantSignatures ??= new TenantSignatureResource($this->http);
     }
 
     /**

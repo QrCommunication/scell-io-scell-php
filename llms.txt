@@ -1,5 +1,73 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.6.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.7.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.7.0 (2026-05-10) — Tenant Signatures URL-nested resource
+
+Release MINOR retro-compatible. Nouvelle ressource `TenantSignatureResource`
+qui cible les endpoints URL-nested cote tenant. Auth backend : middleware
+`tenant.key` (header `X-API-Key sk_live_*` / `sk_test_*`), SANS contrainte
+`company_id` — un master tenant peut lister toutes ses signatures (parent +
+tous sub-tenants) sans devoir creer une cle API attachee a une company.
+
+### Endpoints couverts
+
+| Endpoint | Methode SDK |
+|----------|-------------|
+| `GET /api/v1/tenant/signatures` | `signatures()->list($filters)` |
+| `GET /api/v1/tenant/signatures/{id}` | `signatures()->get($id)` |
+| `GET /api/v1/tenant/sub-tenants/{subTenantId}/signatures` | `signatures()->listForSubTenant($subTenantId, $filters)` |
+| `GET /api/v1/tenant/sub-tenants/{subTenantId}/signatures/{id}` | `signatures()->getForSubTenant($subTenantId, $id)` |
+
+Les operations write (create, remind, cancel, download, audit-trail)
+restent sur `/v1/signatures` via `SignatureResource` (inchange).
+
+### Surfaces clients
+
+```php
+use Scell\Sdk\ScellTenantClient;
+use Scell\Sdk\ScellApiClient;
+use Scell\Sdk\Enums\SignatureStatus;
+
+// Option A : client tenant dedie
+$tenant = ScellTenantClient::create('tk_live_xxx');
+$sigs = $tenant->signatures()->list([
+    'status'      => SignatureStatus::Completed,
+    'environment' => 'production',
+    'per_page'    => 50,
+]);
+
+// Option B : client API server-side (sk_*)
+$api = ScellApiClient::withApiKey('sk_live_xxx');
+$sigs = $api->tenantSignatures()->list(['status' => 'pending']);
+
+// Limiter a un sub-tenant precis (anti-IDOR cote middleware)
+$subSigs = $tenant->signatures()->listForSubTenant('sub-tenant-uuid', [
+    'status' => 'pending',
+]);
+
+// Detail
+$signature = $tenant->signatures()->get('signature-uuid');
+$sigSub = $tenant->signatures()->getForSubTenant('sub-tenant-uuid', 'signature-uuid');
+```
+
+### Filtres `signatures()->list()` / `listForSubTenant()`
+
+| Filtre        | Type                       | Effet |
+|---------------|----------------------------|-------|
+| `status`      | `SignatureStatus` / string | `pending` \| `completed` \| `refused` \| `expired` |
+| `environment` | string                     | `sandbox` \| `production` |
+| `per_page`    | int                        | 1 a 100 (defaut backend = 25) |
+| `page`        | int                        | Numero de page Laravel (1-indexe) |
+
+Pagination : `data: Signature[]`, `meta: { current_page, per_page, total, last_page }`.
+
+### Pourquoi cette ressource
+
+Avant la v2.7.0, `SignatureResource::list()` et `::get()` (sous `/v1/signatures`)
+exigeaient une cle API attachee a une `company_id`. Les master tenants sans
+`company_id` (ou souhaitant un acces cross-company) recevaient
+`403 COMPANY_REQUIRED`. Le nouveau pattern URL-nested suit la convention
+deja en place pour `/v1/tenant/invoices` et `/v1/tenant/credit-notes`.
 
 ## v2.6.0 (2026-05-10) — Signatures list/get exposed to SDKs (tenant scope)
 
