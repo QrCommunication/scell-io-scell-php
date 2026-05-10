@@ -1,5 +1,81 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.3.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.4.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.4.0 (2026-05-10) — Fix CompanyData / SireneLookupResult parsing
+
+Release patch critique. Le DTO `CompanyData` lisait l'adresse en shape
+nested (`data.address.line1`) alors que l'API renvoie tout a plat
+(`data.address_line1`). Resultat : tous les champs adresse arrivaient
+en chaine vide. Ce bug existait depuis v2.0.0 et rendait inutilisable
+le pre-fill du formulaire d'onboarding cote partenaire widget.
+
+### Fix DTO `CompanyData`
+
+```php
+// Shape JSON reelle de l'API (capture prod RL CONSEIL 2026-05-10)
+[
+    'name' => 'RL CONSEIL',
+    'legal_name' => 'RL CONSEIL',           // <- nouveau
+    'siret' => '10178342100015',
+    'siren' => '101783421',
+    'vat_number' => 'FR95101783421',
+    'legal_form' => '5710',
+    'naf_code' => '62.02A',
+    'address_line1' => '200 RUE DE LA CROIX NIVERT', // <- a plat (etait nested)
+    'address_line2' => null,
+    'postal_code' => '75015',
+    'city' => 'PARIS',
+    'country' => 'FR',
+    'is_active' => true,
+    'creation_date' => '2026-01-19',        // <- renomme depuis created_at
+    'employee_range' => 'NN',               // <- nouveau
+]
+```
+
+### Fix DTO `SireneLookupResult` — 3 cas discrimines
+
+```php
+$result = $public->onboarding()->lookupSirene('10178342100015');
+
+// Cas 1 : success
+if ($result->sireneLookupSucceeded && $result->data !== null) {
+    echo $result->data->name;            // 'RL CONSEIL'
+    echo $result->data->addressLine1;    // '200 RUE DE LA CROIX NIVERT'
+    echo $result->data->city;            // 'PARIS'
+}
+
+// Cas 2 : manual_entry fallback (Etalab + INSEE down)
+if ($result->manualEntryRequired) {
+    // $result->code === 'SIRENE_MANUAL_ENTRY_REQUIRED'
+    // $result->data === null
+    // afficher le formulaire en saisie manuelle
+}
+
+// Cas 3 : SIRET introuvable (404)
+if ($result->code === 'SIRENE_NOT_FOUND') {
+    // afficher "SIRET inconnu"
+}
+```
+
+### Migration depuis v2.3.0
+
+Aucun breaking sur la signature publique du DTO — les noms des proprietes
+(`addressLine1`, `postalCode`, `city`...) sont inchanges. Le bug etait
+purement dans `fromArray()`. **Si vous lisiez `$company->addressLine1`
+avant et qu'il etait vide → la mise a jour suffit pour qu'il soit peuple
+correctement.**
+
+Nouveau champs accessibles :
+- `$company->legalName` (raison sociale)
+- `$company->creationDate` (date d'immatriculation)
+- `$company->employeeRange`
+- `$result->manualEntryRequired` (bool)
+- `$result->code` (?string)
+
+`$company->createdAt` (v2.3.0 et anterieures) reste lu depuis l'API si
+present (fallback) mais l'expose en tant que `$company->creationDate`.
+
+---
 
 ## v2.3.0 (2026-05-10) — Publishable Key auth (`X-Publishable-Key`)
 

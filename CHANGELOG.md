@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [2.4.0] - 2026-05-10
+
+### Fixed (CRITICAL — DTO de-serialization bug)
+
+- **`CompanyData::fromArray()`** : lisait `data['address']['line1']` (nested) alors que l'API renvoie l'adresse à plat (`data['address_line1']`, `data['postal_code']`, `data['city']`, `data['country']`). Tous les champs adresse arrivaient en chaîne vide depuis v2.0.0. Le DTO supporte désormais les deux shapes (flat preferred, nested kept for backward compat).
+- **`SireneLookupResult::fromArray()`** : lisait `payload['sirene_lookup_succeeded']` au niveau racine alors que l'API n'a JAMAIS exposé ce champ — elle expose `data.sirene_lookup_failed: true` (négation) au cas manual_entry, ou rien au cas success. Le flag `$sireneLookupSucceeded` était donc systématiquement `false` après une réponse réussie.
+
+### Added
+
+- **`CompanyData::$legalName`** (BS-46 alias raison sociale, snake_case API : `legal_name`).
+- **`CompanyData::$creationDate`** (renommage de `$createdAt` pour matcher l'API `creation_date` ; `$createdAt` reste lisible en fallback dans `fromArray`).
+- **`CompanyData::$employeeRange`** (champ INSEE `employee_range`).
+- **`SireneLookupResult::$manualEntryRequired`** (bool) — true quand les deux providers (Etalab + INSEE) sont en échec et que le widget doit basculer en saisie manuelle.
+- **`SireneLookupResult::$code`** (?string) — code retour API : `'SIRENE_MANUAL_ENTRY_REQUIRED'`, `'SIRENE_NOT_FOUND'`, `null` au cas success.
+
+### Tests
+
+- `tests/SireneLookupResultTest.php` (5 tests) : couvre la vraie shape capturée en prod (RL CONSEIL Etalab success, Microsoft manual_entry fallback, SIRET_NOT_FOUND, retro-compat nested address, payload vide).
+- `HttpClientAuthTest::sdk_version_constant_is_in_sync_with_release` mis à jour (`'2.4.0'`).
+
+### Tag
+
+```bash
+git tag -a v2.4.0 -m "fix(dto): correct CompanyData address parsing + SireneLookupResult discriminant"
+git push origin v2.4.0
+```
+
+---
+
 ## [2.3.0] - 2026-05-10
 
 ### Added
