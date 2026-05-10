@@ -320,14 +320,21 @@ class SignatureBuilder
      *
      * Les coordonnees `x` / `y` (et `width` / `height`) sont exprimees dans l'unite `$unit` :
      *  - `'percent'` (defaut) : valeurs entre 0 et 100, relatives a la page.
-     *  - `'pixel'`            : coordonnees absolues en pixels.
+     *  - `'pixel'`            : coordonnees absolues en pixels @72dpi.
      *
-     * @param int         $page    Numero de page (1-indexe).
-     * @param float       $x       Position X (percent 0-100 ou pixels).
-     * @param float       $y       Position Y (percent 0-100 ou pixels).
-     * @param float|null  $width   Largeur optionnelle.
-     * @param float|null  $height  Hauteur optionnelle.
-     * @param string      $unit    `'percent'` (defaut) ou `'pixel'`.
+     * Les dimensions de page (`pageWidthPx` / `pageHeightPx`) sont optionnelles.
+     * Si absentes, le backend les detecte automatiquement via parser PDF avec
+     * fallback A4 (595x842 px) — pratique pour la plupart des cas. A fournir
+     * explicitement uniquement si vous avez deja parse le PDF cote client.
+     *
+     * @param int        $page          Numero de page (1-indexe).
+     * @param float      $x             Position X (percent 0-100 ou pixels).
+     * @param float      $y             Position Y (percent 0-100 ou pixels).
+     * @param float|null $width         Largeur optionnelle.
+     * @param float|null $height        Hauteur optionnelle.
+     * @param string     $unit          `'percent'` (defaut) ou `'pixel'`.
+     * @param int|null   $pageWidthPx   Largeur de la page en px @72dpi (override du parser auto).
+     * @param int|null   $pageHeightPx  Hauteur de la page en px @72dpi (override du parser auto).
      */
     public function addSignaturePosition(
         int $page,
@@ -336,6 +343,8 @@ class SignatureBuilder
         ?float $width = null,
         ?float $height = null,
         string $unit = 'percent',
+        ?int $pageWidthPx = null,
+        ?int $pageHeightPx = null,
     ): self {
         $position = [
             'page' => $page,
@@ -349,22 +358,60 @@ class SignatureBuilder
         if ($height !== null) {
             $position['height'] = $height;
         }
+        if ($pageWidthPx !== null) {
+            $position['page_width_px'] = $pageWidthPx;
+        }
+        if ($pageHeightPx !== null) {
+            $position['page_height_px'] = $pageHeightPx;
+        }
 
         $this->signaturePositions[] = $position;
         return $this;
     }
 
     /**
-     * Configure l'interface utilisateur (white-label).
+     * Configure l'interface utilisateur (white-label) — 21 champs alignes sur
+     * la spec officielle OpenAPI.com EU-SES v1.0.17.
      *
-     * Champs supportes (tous optionnels, alignes sur la spec OpenAPI.com) :
-     *  - `sidebar_logo`, `sidebar_background_color`, `sidebar_text_color`
-     *  - `header_logo`, `header_background_color`, `header_text_color`
-     *  - `footer_text`, `footer_background_color`, `footer_text_color`
-     *  - `button_background_color`, `button_text_color`
-     *  - `sign_button_background_color`, `sign_button_text_color`
-     *  - `hide_header`, `hide_footer`, `hide_sidebar`, `hide_branding`
-     *  - `iframe_ancestors` (liste de domaines autorises a embarquer en iframe)
+     * Couleurs : tous les champs `*_color` attendent du hex `#RRGGBB`.
+     * Logo : URL absolue HTTPS publique (max 500 chars).
+     *
+     * Sidebar :
+     *  - `sidebar_logo`              (string URL)
+     *  - `sidebar_background_color`  (#RRGGBB)
+     *  - `sidebar_title_color`       (#RRGGBB)
+     *  - `sidebar_text_color`        (#RRGGBB)
+     *
+     * Header :
+     *  - `header_background_color`   (#RRGGBB)
+     *  - `header_title_color`        (#RRGGBB)
+     *  - `header_subtitle_color`     (#RRGGBB)
+     *
+     * Footer :
+     *  - `footer_background_color`   (#RRGGBB)
+     *
+     * Boutons standards :
+     *  - `button_text_color`              (#RRGGBB)
+     *  - `button_text_color_hover`        (#RRGGBB)
+     *  - `button_background_color`        (#RRGGBB)
+     *  - `button_background_color_hover`  (#RRGGBB)
+     *
+     * Bouton "Signer" (override des boutons standards) :
+     *  - `sign_button_text_color`             (#RRGGBB)
+     *  - `sign_button_text_color_hover`       (#RRGGBB)
+     *  - `sign_button_background_color`       (#RRGGBB)
+     *  - `sign_button_background_color_hover` (#RRGGBB)
+     *
+     * Toggles d'affichage :
+     *  - `hide_sidebar`            (bool)
+     *  - `hide_header`             (bool)
+     *  - `hide_download_validated` (bool)
+     *  - `hide_download_signed`    (bool)
+     *
+     * Iframe (max 20 URLs autorisees) :
+     *  - `iframe_ancestors` (string[]): domaines autorises a embarquer la
+     *    page de signature. Si Scell.io heberge la page wrapper, le backend
+     *    injecte automatiquement `https://sign.scell.io` en plus de vos URLs.
      *
      * Les valeurs `null` sont filtrees. Appels multiples fusionnes.
      *
@@ -379,13 +426,19 @@ class SignatureBuilder
     }
 
     /**
-     * Configure les options de signature.
+     * Configure les options de signature (comportement non-UI).
      *
      * Champs supportes (tous optionnels) :
-     *  - `signature_mode`      : mode de signature (`'draw'`, `'type'`, `'both'`, ...)
-     *  - `signer_must_read`    : bool, force le signataire a lire le document avant de signer
-     *  - `user_editable_data`  : bool, autorise le signataire a modifier ses donnees
-     *  - `timezone`            : fuseau horaire (ex: `'Europe/Paris'`)
+     *  - `signature_mode` (string) : mode de saisie. Valeurs valides :
+     *      - `'typed'` : signature tapee au clavier uniquement
+     *      - `'drawn'` : signature dessinee uniquement
+     *      - `'both'`  : laisse le signataire choisir
+     *  - `signer_must_read` (bool) : force le signataire a parcourir tout
+     *    le document avant de pouvoir signer.
+     *  - `user_editable_data` (array) : autorise le signataire a modifier
+     *    certaines de ses donnees. Forme :
+     *      ['name' => bool, 'mobile' => bool, 'email' => bool]
+     *  - `timezone` (string) : identifiant IANA (ex. `'Europe/Paris'`).
      *
      * @param array<string, mixed> $options
      */
