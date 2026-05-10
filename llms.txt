@@ -1,5 +1,90 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.2.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.3.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.3.0 (2026-05-10) — Publishable Key auth (`X-Publishable-Key`)
+
+Release mineure additive. Comble un gap critique : les endpoints widget
+public (`/widget/onboarding/sirene/lookup`, `/widget/onboarding/sub-tenant`)
+exigent le header `X-Publishable-Key`. Avant v2.3.0, le SDK n'exposait
+aucune methode pour ce header — `ScellApiClient::withApiKey('pk_live_...')`
+envoyait incorrectement `X-API-Key: pk_live_*` (rejete cote serveur).
+
+> Pas d'entree `version` dans `composer.json`. Composer lit la version
+> depuis le tag Git `v2.3.0`.
+
+### Nouvelle classe `ScellPublicClient`
+
+Mirror du `ScellPublicClient` du SDK JS (`@scell/sdk`). Recommande pour les
+contextes widget public (browser-safe, cle pk_*).
+
+```php
+use Scell\Sdk\ScellPublicClient;
+
+$public = new ScellPublicClient('pk_live_...');
+
+// Sirene lookup
+$lookup = $public->onboarding()->lookupSirene('12345678901234');
+if ($lookup->data !== null) {
+    echo $lookup->data->name;
+}
+
+// SubTenant creation depuis le widget
+$result = $public->onboarding()->createSubTenant([
+    'company'  => $lookup->data,
+    'identity' => [
+        'first_name' => 'Marie',
+        'last_name'  => 'Dupont',
+        'email'      => 'marie@acme.fr',
+    ],
+    'locale'   => 'fr',
+]);
+// $result->subTenant : SubTenant
+// $result->resumeUrl : ?string (signed URL 7 jours)
+```
+
+### Alternative : `ScellApiClient::withPublishableKey()`
+
+Pratique si vous voulez UN seul client en partageant la config :
+
+```php
+use Scell\Sdk\ScellApiClient;
+
+$public = ScellApiClient::withPublishableKey('pk_live_...');
+$lookup = $public->onboarding()->lookupSirene('12345678901234');
+```
+
+### Nouveau header HTTP
+
+| Methode SDK                                  | Header HTTP             | Cle              |
+|----------------------------------------------|-------------------------|------------------|
+| `HttpClient::withBearerToken($token)`        | `Authorization: Bearer` | JWT (dashboard)  |
+| `HttpClient::withApiKey($sk)`                | `X-API-Key`             | `sk_live_*`      |
+| `HttpClient::withTenantKey($tk)`             | `X-Tenant-Key`          | `tk_*` (legacy)  |
+| **`HttpClient::withPublishableKey($pk)`** ⭐ | **`X-Publishable-Key`** | **`pk_live_*`**  |
+
+### Migration depuis v2.2.0
+
+Aucun breaking change. Si vous utilisiez deja le hack
+`ScellApiClient::withApiKey('pk_live_...')` (qui ne fonctionnait pas),
+remplacer par :
+
+```php
+// AVANT (cassait sur les endpoints widget — 401)
+$client = ScellApiClient::withApiKey('pk_live_xxx');
+
+// APRES (fonctionne)
+$client = ScellApiClient::withPublishableKey('pk_live_xxx');
+// ou
+$client = new ScellPublicClient('pk_live_xxx');
+```
+
+### Bonus : drift `SDK_VERSION` corrige
+
+La constante `HttpClient::SDK_VERSION` etait restee a `'1.12.0'` malgre
+les releases successives. Elle reflete maintenant `'2.3.0'`. Cette
+constante est utilisee dans le header `User-Agent` envoye par chaque requete.
+
+---
 
 ## v2.2.0 (2026-05-10) — Billing Invoice Pay (Stripe)
 
@@ -114,11 +199,16 @@ if ($subTenant->isOnboarded()) { /* ... */ }
 
 ## Onboarding v2 — Widget endpoints (publishable-key)
 
+> Depuis v2.3.0 : utiliser `ScellPublicClient` ou
+> `ScellApiClient::withPublishableKey('pk_live_...')`. Les anciennes versions
+> cassaient car `withApiKey('pk_live_...')` envoyait le mauvais header
+> (`X-API-Key` au lieu de `X-Publishable-Key`).
+
 ```php
-use Scell\Sdk\ScellApiClient;
+use Scell\Sdk\ScellPublicClient;
 use Scell\Sdk\DTOs\CompanyData;
 
-$publicClient = ScellApiClient::withApiKey('pk_live_...');
+$publicClient = new ScellPublicClient('pk_live_...');
 
 // 1. Sirene lookup
 $lookup = $publicClient->onboarding()->lookupSirene('12345678901234');

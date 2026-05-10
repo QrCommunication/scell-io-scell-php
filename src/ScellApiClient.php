@@ -20,21 +20,30 @@ use Scell\Sdk\Resources\TenantInvoiceResource;
 
 /**
  * API Client for server-to-server integration.
- * Uses X-API-Key header with tk_live_* or tk_test_* keys.
  *
- * Provides access to both legacy invoice/signature endpoints
- * and tenant management endpoints. For dedicated tenant operations,
- * prefer ScellTenantClient which uses X-Tenant-Key header.
+ * Modes d'authentification supportes :
+ * - **Secret API Key** (`sk_live_*` / `sk_test_*`) via `withApiKey()` — header `X-API-Key`,
+ *   server-side uniquement, donne acces a tous les endpoints.
+ * - **Publishable Key** (`pk_live_* / pk_test_*`) via `withPublishableKey()` — header
+ *   `X-Publishable-Key`, safe browser/client, restreint aux endpoints widget publics
+ *   (`/widget/onboarding/*`). Pour des operations widget c'est ce qu'il FAUT utiliser
+ *   (a la place de `ScellPublicClient` quand on veut un seul client).
+ *
+ * Pour les operations tenant dediees (X-Tenant-Key), preferer `ScellTenantClient`.
  *
  * @example
  * ```php
- * // Initialisation avec API Key
- * $api = ScellApiClient::withApiKey('tk_live_...');
+ * // Server-side (Secret API Key)
+ * $api = ScellApiClient::withApiKey('sk_live_...');
  *
- * // Ou mode sandbox
- * $api = ScellApiClient::sandbox('tk_test_...');
+ * // Sandbox server-side
+ * $api = ScellApiClient::sandbox('sk_test_...');
  *
- * // Creer une facture
+ * // Widget public (Publishable Key) — header X-Publishable-Key
+ * $public = ScellApiClient::withPublishableKey('pk_live_...');
+ * $lookup = $public->onboarding()->lookupSirene('12345678901234');
+ *
+ * // Creer une facture (sk_*)
  * $invoice = $api->invoices()->builder()
  *     ->outgoing()
  *     ->facturX()
@@ -43,10 +52,6 @@ use Scell\Sdk\Resources\TenantInvoiceResource;
  *     ->buyer('98765432109876', 'Client SA', new Address(...))
  *     ->addLine('Prestation', 1, 1000.00, 20.0)
  *     ->create();
- *
- * // Gerer les sub-tenants
- * $subTenant = $api->subTenants()->create([...]);
- * $stats = $api->stats()->overview();
  * ```
  */
 class ScellApiClient
@@ -69,12 +74,14 @@ class ScellApiClient
     /**
      * Cree une instance du client API.
      *
-     * @param string $apiKey Cle API (commence par tk_live_ ou tk_test_)
+     * @param string $key Cle API (sk_live_* / sk_test_*) ou publishable (pk_live_* / pk_test_*)
      * @param Config|null $config Configuration optionnelle
+     * @param 'api-key'|'publishable-key' $authMode Mode d'auth (selectionne le header HTTP)
      */
     private function __construct(
-        string $apiKey,
-        ?Config $config = null
+        string $key,
+        ?Config $config = null,
+        string $authMode = 'api-key',
     ) {
         $this->config = $config ?? new Config();
 
@@ -87,39 +94,68 @@ class ScellApiClient
             verifySsl: $this->config->verifySsl,
         );
 
-        $this->http->withApiKey($apiKey);
+        match ($authMode) {
+            'publishable-key' => $this->http->withPublishableKey($key),
+            default => $this->http->withApiKey($key),
+        };
     }
 
     /**
-     * Cree un client avec une API Key.
+     * Cree un client avec une Secret API Key (server-side).
      *
-     * @param string $apiKey Cle API (tk_live_... ou tk_test_...)
+     * Header HTTP : `X-API-Key`. Donne acces a tous les endpoints API.
+     * NE JAMAIS exposer une `sk_*` cote browser/client.
+     *
+     * @param string $apiKey Cle API (sk_live_... ou sk_test_...)
      * @param Config|null $config Configuration optionnelle
      */
     public static function withApiKey(string $apiKey, ?Config $config = null): self
     {
-        return new self($apiKey, $config);
+        return new self($apiKey, $config, 'api-key');
+    }
+
+    /**
+     * Cree un client avec une Publishable Key (widget public).
+     *
+     * Header HTTP : `X-Publishable-Key`. Restreint aux endpoints widget publics
+     * (`/widget/onboarding/sirene/lookup`, `/widget/onboarding/sub-tenant`, ...).
+     * Safe a exposer cote browser/client/widget partenaire.
+     *
+     * @param string $publishableKey Cle publishable (pk_live_... ou pk_test_...)
+     * @param Config|null $config Configuration optionnelle
+     *
+     * @example
+     * ```php
+     * $public = ScellApiClient::withPublishableKey('pk_live_xxx');
+     * $lookup = $public->onboarding()->lookupSirene('12345678901234');
+     * ```
+     */
+    public static function withPublishableKey(string $publishableKey, ?Config $config = null): self
+    {
+        return new self($publishableKey, $config, 'publishable-key');
     }
 
     /**
      * Cree un client en mode sandbox.
      *
-     * @param string $apiKey Cle API sandbox (tk_test_...)
+     * @param string $apiKey Cle API sandbox (sk_test_... ou pk_test_...)
      */
     public static function sandbox(string $apiKey): self
     {
-        return new self($apiKey, Config::sandbox());
+        $authMode = str_starts_with($apiKey, 'pk_') ? 'publishable-key' : 'api-key';
+        return new self($apiKey, Config::sandbox(), $authMode);
     }
 
     /**
      * Cree un client pour le developpement local.
      *
-     * @param string $apiKey Cle API
+     * @param string $apiKey Cle API (sk_* ou pk_*)
      * @param string $baseUrl URL de l'API locale
      */
     public static function local(string $apiKey, string $baseUrl = 'http://localhost:8000/api/v1'): self
     {
-        return new self($apiKey, Config::local($baseUrl));
+        $authMode = str_starts_with($apiKey, 'pk_') ? 'publishable-key' : 'api-key';
+        return new self($apiKey, Config::local($baseUrl), $authMode);
     }
 
     /**

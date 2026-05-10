@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [2.3.0] - 2026-05-10
+
+### Added
+
+- **`HttpClient::withPublishableKey(string $key): self`** — nouveau mode d'auth qui ecrit le header `X-Publishable-Key`. Permet enfin d'appeler les endpoints widget (`/widget/onboarding/sirene/lookup`, `/widget/onboarding/sub-tenant`) qui exigent ce header specifique.
+- **`ScellApiClient::withPublishableKey(string $key, ?Config $config = null): self`** — factory statique cohérente avec `withApiKey()`.
+- **`ScellPublicClient`** — nouvelle classe dediee aux contextes widget public (mirror du `ScellPublicClient` du SDK JS `@scell/sdk`). Accepte une cle `pk_live_*` / `pk_test_*` et expose uniquement la `OnboardingResource`.
+- Tests : `tests/HttpClientAuthTest.php` (11 tests, lock chacun des 4 modes d'auth + sandbox routing pk_/sk_).
+
+### Fixed
+
+- **Bug doc critique** : `OnboardingResource::lookupSirene()` documentait `ScellApiClient::withApiKey('pk_live_...')` qui envoyait `X-API-Key: pk_live_*` (rejete cote serveur, 401). Le docblock pointe desormais vers `ScellPublicClient` / `withPublishableKey()`.
+- **Drift `HttpClient::SDK_VERSION`** : la constante etait restee a `'1.12.0'` malgre les releases successives. Synchronisee a `'2.3.0'` (impacte le `User-Agent` envoye par chaque requete).
+
+### Migration
+
+Aucun breaking change — les API existantes (`withApiKey`, `withTenantKey`, `withBearerToken`) sont inchangees. Si vous utilisiez le hack non-fonctionnel `ScellApiClient::withApiKey('pk_live_...')` pour le widget, remplacer par `ScellApiClient::withPublishableKey('pk_live_...')` ou `new ScellPublicClient('pk_live_...')`.
+
+### Tag
+
+```bash
+git tag -a v2.3.0 -m "feat(http): add withPublishableKey() for widget endpoints (X-Publishable-Key header)"
+git push origin v2.3.0
+```
+
+---
+
 ## [2.2.0] - 2026-05-10
 
 ### Added

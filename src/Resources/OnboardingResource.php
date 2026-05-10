@@ -72,16 +72,23 @@ class OnboardingResource
     /**
      * Recherche d'une societe francaise par SIRET via Sirene.
      *
-     * Authentification publishable-key. A appeler depuis le widget
-     * partenaire pour pre-remplir le formulaire d'onboarding.
+     * Authentification **publishable-key** (header `X-Publishable-Key`).
+     * A appeler depuis le widget partenaire pour pre-remplir le formulaire
+     * d'onboarding. Utiliser `ScellPublicClient` (recommande) ou
+     * `ScellApiClient::withPublishableKey()` — JAMAIS `withApiKey()` qui
+     * envoie le mauvais header (`X-API-Key`).
      *
      * @example
      * ```php
-     * $publicClient = ScellApiClient::withApiKey('pk_live_...');
-     * $result = $publicClient->onboarding()->lookupSirene('12345678901234');
+     * use Scell\Sdk\ScellPublicClient;
+     *
+     * $client = new ScellPublicClient('pk_live_...');
+     * $result = $client->onboarding()->lookupSirene('12345678901234');
      * if ($result->data !== null) {
      *     echo $result->data->name;
      * }
+     *
+     * // Alternative : ScellApiClient::withPublishableKey('pk_live_...')
      * ```
      */
     public function lookupSirene(string $siret): SireneLookupResult

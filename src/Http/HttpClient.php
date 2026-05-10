@@ -21,12 +21,13 @@ use Scell\Sdk\Exceptions\ScellException;
  */
 class HttpClient
 {
-    public const SDK_VERSION = '1.12.0';
+    public const SDK_VERSION = '2.3.0';
     private Client $client;
     private string $baseUrl;
     private ?string $bearerToken = null;
     private ?string $apiKey = null;
     private ?string $tenantKey = null;
+    private ?string $publishableKey = null;
 
     /**
      * Cree une instance du client HTTP.
@@ -60,28 +61,52 @@ class HttpClient
     {
         $this->bearerToken = $token;
         $this->apiKey = null;
+        $this->tenantKey = null;
+        $this->publishableKey = null;
         return $this;
     }
 
     /**
-     * Configure l'authentification par API Key.
+     * Configure l'authentification par API Key (server-side, sk_live_* / sk_test_*).
+     *
+     * Header HTTP : `X-API-Key`.
      */
     public function withApiKey(string $apiKey): self
     {
         $this->apiKey = $apiKey;
         $this->bearerToken = null;
         $this->tenantKey = null;
+        $this->publishableKey = null;
         return $this;
     }
 
     /**
-     * Configure l'authentification par Tenant Key.
+     * Configure l'authentification par Tenant Key (legacy multi-tenant, tk_*).
+     *
+     * Header HTTP : `X-Tenant-Key`.
      */
     public function withTenantKey(string $tenantKey): self
     {
         $this->tenantKey = $tenantKey;
         $this->bearerToken = null;
         $this->apiKey = null;
+        $this->publishableKey = null;
+        return $this;
+    }
+
+    /**
+     * Configure l'authentification par Publishable Key (widget public, pk_live_* / pk_test_*).
+     *
+     * Header HTTP : `X-Publishable-Key`. A utiliser uniquement pour les
+     * endpoints widget publics (`/widget/onboarding/*`). Les publishable keys
+     * sont safe a exposer cote browser/client.
+     */
+    public function withPublishableKey(string $publishableKey): self
+    {
+        $this->publishableKey = $publishableKey;
+        $this->bearerToken = null;
+        $this->apiKey = null;
+        $this->tenantKey = null;
         return $this;
     }
 
@@ -276,6 +301,8 @@ class HttpClient
             $headers['X-API-Key'] = $this->apiKey;
         } elseif ($this->tenantKey) {
             $headers['X-Tenant-Key'] = $this->tenantKey;
+        } elseif ($this->publishableKey) {
+            $headers['X-Publishable-Key'] = $this->publishableKey;
         }
 
         return $headers;
@@ -326,7 +353,10 @@ class HttpClient
      */
     public function hasCredentials(): bool
     {
-        return $this->bearerToken !== null || $this->apiKey !== null || $this->tenantKey !== null;
+        return $this->bearerToken !== null
+            || $this->apiKey !== null
+            || $this->tenantKey !== null
+            || $this->publishableKey !== null;
     }
 
     /**
