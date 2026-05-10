@@ -1,6 +1,11 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [2.7.1] - 2026-05-10
+
+### Fixed
+- `SubTenantResource::getSuperPdpStatus`, `refreshSuperPdpStatus` et `getResumeUrl` envoyaient sur `/sub-tenants/{id}/...` au lieu de `/tenant/sub-tenants/{id}/...`. L'ancien path résolvait sur le bloc Sanctum (dashboard SPA) → 401 systématique pour les clés API `sk_*`. Workaround utilisateur : appel HTTP direct au bon endpoint.
+
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 

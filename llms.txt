@@ -1,5 +1,5 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.7.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.7.1 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
 
 ## v2.7.0 (2026-05-10) — Tenant Signatures URL-nested resource
 

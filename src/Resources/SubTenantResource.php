@@ -121,7 +121,7 @@ class SubTenantResource
      */
     public function getSuperPDPStatus(string $id): SubTenantSummary
     {
-        $response = $this->http->get("sub-tenants/{$id}/superpdp-status");
+        $response = $this->http->get("tenant/sub-tenants/{$id}/superpdp-status");
 
         return SubTenantSummary::fromArray($response);
     }
@@ -134,7 +134,7 @@ class SubTenantResource
      */
     public function refreshSuperPDPStatus(string $id): SubTenantSummary
     {
-        $response = $this->http->post("sub-tenants/{$id}/superpdp-status/refresh");
+        $response = $this->http->post("tenant/sub-tenants/{$id}/superpdp-status/refresh");
 
         return SubTenantSummary::fromArray($response);
     }
@@ -145,7 +145,7 @@ class SubTenantResource
      */
     public function getResumeUrl(string $id): ResumeUrlResult
     {
-        $response = $this->http->post("sub-tenants/{$id}/resume-url");
+        $response = $this->http->post("tenant/sub-tenants/{$id}/resume-url");
 
         return ResumeUrlResult::fromArray($response);
     }
