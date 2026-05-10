@@ -24,12 +24,21 @@ class SignatureResource
     ) {}
 
     /**
-     * Liste les signatures avec filtrage optionnel.
+     * Liste les signatures du tenant courant avec filtrage optionnel.
+     *
+     * Depuis v2.5.0, l'endpoint est expose aux SDKs avec auth `sk_live_*` /
+     * `sk_test_*` (avant : Sanctum SPA only). Le scope est `tenant_id` (toutes
+     * les signatures du tenant et de ses sub-tenants) et non plus `user_id`.
+     *
+     * Pour limiter aux signatures d'un sub-tenant precis, passer
+     * `sub_tenant_id` : le backend verifie l'appartenance au tenant courant
+     * (anti-IDOR) et retourne 403 si le sub-tenant n'appartient pas au tenant.
      *
      * @param array{
      *     status?: SignatureStatus|string,
      *     environment?: string,
      *     company_id?: string,
+     *     sub_tenant_id?: string,
      *     per_page?: int,
      *     page?: int
      * } $filters

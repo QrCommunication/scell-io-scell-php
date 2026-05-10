@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [2.6.0] - 2026-05-10
+
+### Added
+
+- **`SignatureResource::list()`** : nouveau filtre documente `sub_tenant_id` (anti-IDOR : scope vers un sub-tenant du tenant courant, 403 sinon). Les filtres `status`, `environment`, `company_id`, `per_page`, `page` continuent de fonctionner.
+- **`SignatureResource::get()`** : desormais utilisable avec auth `sk_live_*` / `sk_test_*` (avant : Sanctum SPA only).
+
+### Changed
+
+- **Scope de `GET /api/v1/signatures` et `GET /api/v1/signatures/{id}`** : le backend passe d'un scope `user_id` a un scope `tenant_id` (via `company.tenant_id`). Les SDKs utilisant `sk_live_*` / `sk_test_*` voient desormais toutes les signatures du tenant et de ses sub-tenants, et non plus celles du seul user createur.
+
+### Fixed
+
+- **Bug backend (cote API)** : `GET /api/v1/signatures` retournait 500 sous auth `api.key` car `$request->user()` n'etait pas resolu. Fixe cote backend ; aucune modification cote SDK n'est requise pour beneficier du fix.
+
 ## [2.4.0] - 2026-05-10
 
 ### Fixed (CRITICAL — DTO de-serialization bug)

@@ -1,5 +1,51 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.4.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.6.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.6.0 (2026-05-10) — Signatures list/get exposed to SDKs (tenant scope)
+
+Release MINOR retro-compatible. `GET /api/v1/signatures` et `GET
+/api/v1/signatures/{id}` sont desormais consommables par les SDKs avec
+auth `sk_live_*` / `sk_test_*` (avant : Sanctum SPA only). Le scope
+backend est passe de `user_id` a `tenant_id` (via `company.tenant_id`).
+
+### Filtres `signatures()->list()`
+
+| Filtre          | Type                                | Effet |
+|-----------------|-------------------------------------|-------|
+| `status`        | `SignatureStatus` / string          | Statut courant (`pending`, `completed`, ...) |
+| `environment`   | `'production'` / `'sandbox'`        | Source de l'enregistrement |
+| `company_id`    | UUID                                | Limite a une Company precise |
+| `sub_tenant_id` | UUID                                | Limite a un sub-tenant (anti-IDOR, 403 si != tenant courant) |
+| `per_page`      | int (max 100)                       | Pagination |
+| `page`          | int                                 | Page courante |
+
+```php
+use Scell\Sdk\ScellApiClient;
+use Scell\Sdk\Enums\SignatureStatus;
+
+$api = new ScellApiClient('sk_live_xxx');
+
+// Toutes les signatures pending du tenant + ses sub-tenants
+$signatures = $api->signatures()->list([
+    'status' => SignatureStatus::Pending,
+    'per_page' => 50,
+]);
+
+// Limite a un sub-tenant precis (verification anti-IDOR cote backend)
+$subOnly = $api->signatures()->list([
+    'sub_tenant_id' => '019d5ea8-...',
+]);
+
+// Get unitaire (meme scope tenant_id)
+$one = $api->signatures()->get('sig_xxx');
+```
+
+### Bug backend fixe (release SDK declenchee par)
+
+`GET /api/v1/signatures` retournait 500 sous auth `api.key` (sk_*) car
+`$request->user()->id` n'etait pas resolu (user resolver non pose pour
+cette auth). Fix cote backend ; aucune modif cote SDK requise pour
+beneficier du fix, mais la doc / les tests / la version sont alignes.
 
 ## v2.4.0 (2026-05-10) — Fix CompanyData / SireneLookupResult parsing
 
