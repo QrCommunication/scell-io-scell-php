@@ -8,6 +8,7 @@ use Scell\Sdk\DTOs\BillingInvoice;
 use Scell\Sdk\DTOs\BillingTransaction;
 use Scell\Sdk\DTOs\BillingUsage;
 use Scell\Sdk\DTOs\PaginatedResult;
+use Scell\Sdk\DTOs\PaymentIntent;
 use Scell\Sdk\Http\HttpClient;
 
 class BillingResource
@@ -59,5 +60,24 @@ class BillingResource
     {
         $response = $this->http->get('tenant/billing/transactions', $params);
         return PaginatedResult::fromArray($response, fn(array $data) => BillingTransaction::fromArray($data));
+    }
+
+    /**
+     * Initie le paiement Stripe d'une facture plateforme.
+     *
+     * Retourne un PaymentIntent contenant le `client_secret` a passer
+     * a Stripe.js `confirmCardPayment()` pour confirmer le paiement cote client.
+     *
+     * @param string $invoiceId UUID de la BillingInvoice
+     * @return PaymentIntent
+     * @throws \Scell\Sdk\Exceptions\ScellException si la facture n'existe pas (404)
+     *         ou si son statut ne permet pas le paiement, e.g. draft/paid/cancelled (422)
+     *
+     * @since 2.2.0
+     */
+    public function payInvoice(string $invoiceId): PaymentIntent
+    {
+        $response = $this->http->post("tenant/billing/invoices/{$invoiceId}/pay");
+        return PaymentIntent::fromArray($response['data']);
     }
 }

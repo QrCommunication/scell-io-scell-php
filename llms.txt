@@ -1,5 +1,80 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.0.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.2.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.2.0 (2026-05-10) — Billing Invoice Pay (Stripe)
+
+Release mineure additive. Ajoute le paiement Stripe des factures plateforme.
+
+> Pas d'entree `version` dans `composer.json`. Composer lit la version
+> depuis le tag Git `v2.2.0`.
+
+### Nouvelle methode `BillingResource::payInvoice()`
+
+```php
+use Scell\Sdk\ScellApiClient;
+use Scell\Sdk\DTOs\PaymentIntent;
+
+$api = ScellApiClient::withApiKey('sk_live_xxx');
+
+/** @var PaymentIntent $pi */
+$pi = $api->billing()->payInvoice('billing-invoice-uuid');
+
+// Passer le client_secret a Stripe.js cote client
+echo $pi->clientSecret;       // cs_live_...
+echo $pi->paymentIntentId;    // pi_...
+echo $pi->amount;             // 4900 (centimes)
+echo $pi->currency;           // "eur"
+echo $pi->status;             // "requires_payment_method"
+```
+
+**Erreurs** : `ScellException` 404 (facture autre tenant) · 422 (statut non payable : draft, paid, cancelled).
+
+---
+
+## v2.1.0 (2026-05-08) — Tenant Invoice Download
+
+Release mineure additive. Comble une lacune : les API keys tenant
+(`sk_live_*` / `sk_test_*`) ne pouvaient pas telecharger le Factur-X /
+UBL / CII des factures creees via `tenantInvoices()->create(...)` ou
+`tenantInvoices()->createForSubTenant(...)`.
+
+> Pas d'entree `version` dans `composer.json`. Composer lit la version
+> depuis le tag Git `v2.1.0`.
+
+### Nouvelles methodes sur `TenantInvoiceResource`
+
+```php
+use Scell\Sdk\ScellClient;
+
+$client = new ScellClient(apiKey: 'sk_live_xxx');
+
+// Telecharger une facture tenant directe (Factur-X PDF/A-3 par defaut)
+$pdf = $client->tenantInvoices()->download('019d-uuid');
+file_put_contents('invoice.pdf', $pdf);
+
+// XML pur (UBL ou CII selon output_format de la facture)
+$xml = $client->tenantInvoices()->download('019d-uuid', 'xml');
+
+// Scope sub-tenant (404 si la facture appartient a un autre sub-tenant)
+$pdf = $client->tenantInvoices()->downloadForSubTenant(
+    'sub-tenant-uuid',
+    'invoice-uuid',
+);
+
+// Formats: 'facturx' (default) | 'pdf' (alias) | 'xml'
+```
+
+Les deux methodes renvoient une `string` (contenu binaire brut). Pas de
+presigned URL — le download est synchrone via le backend Scell.
+
+### Endpoints backend
+
+- `GET /api/v1/tenant/invoices/{invoiceId}/download[?format=facturx|pdf|xml]`
+- `GET /api/v1/tenant/sub-tenants/{subTenantId}/invoices/{invoiceId}/download[?format=]`
+
+Auth: `X-API-Key: sk_*` (server-side uniquement, jamais publishable key).
+
+---
 
 ## v2.0.0 (2026-05-08) — Breaking Changes
 
@@ -1428,6 +1503,16 @@ $status = $api->tenantInvoices()->status('invoice-uuid'): array;
 
 // Remaining creditable amounts
 $amounts = $api->tenantInvoices()->remainingCreditable('invoice-uuid'): array;
+
+// Download — Factur-X PDF/A-3 (default) — renvoie binary string
+$pdf = $api->tenantInvoices()->download('invoice-uuid');
+file_put_contents('invoice.pdf', $pdf);
+
+// XML pur (UBL ou CII selon output_format)
+$xml = $api->tenantInvoices()->download('invoice-uuid', 'xml');
+
+// Scope sub-tenant (404 si la facture appartient a un autre sub-tenant)
+$pdf = $api->tenantInvoices()->downloadForSubTenant('sub-tenant-uuid', 'invoice-uuid');
 ```
 
 ---

@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
+## [2.2.0] - 2026-05-10
+
+### Added
+
+- `BillingResource::payInvoice(string $invoiceId): PaymentIntent` — initie le paiement Stripe d'une facture plateforme via `POST /api/v1/tenant/billing/invoices/{id}/pay`. Retourne un `PaymentIntent` avec `clientSecret` a passer a Stripe.js `confirmCardPayment()`.
+- DTO `Scell\Sdk\DTOs\PaymentIntent` — champs : `clientSecret`, `paymentIntentId`, `amount` (centimes), `currency` (ISO 4217), `status`.
+
+### Errors
+
+- `ScellException` (404) si la facture n'appartient pas au tenant
+- `ScellException` (422) si le statut de la facture ne permet pas le paiement (draft, paid, cancelled)
+
+---
+
 ## [2.1.0] - 2026-05-08
 
 ### Added
