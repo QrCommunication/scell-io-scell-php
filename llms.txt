@@ -1,5 +1,43 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.7.1 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.8.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.8.0 (2026-05-11) — BREAKING : `company_id` retire des cles API
+
+Release MAJOR cote DTO. Le backend a supprime la colonne `api_keys.company_id` :
+une cle `sk_*` appartient au tenant, jamais a une company precise. Pour cibler
+un sub-tenant lors d'une operation (facture / signature), passer
+`sub_tenant_id` dans le payload POST. Sans `sub_tenant_id`, l'action utilise
+`tenant.default_company_id`.
+
+### Changements SDK
+
+- `Scell\Sdk\DTOs\ApiKey` : retrait du champ `company_id` (deja absent du DTO,
+  formellement aligne avec le backend qui ne l'expose plus).
+- `ApiKeyResource::create(array $data)` : retirer `'company_id' => ...` du
+  payload, le backend l'ignore desormais.
+- Nouvelles erreurs API a gerer :
+  - `401 TENANT_NOT_RESOLVED` : cle `sk_*` non rattachee a un tenant actif.
+  - `404 SUB_TENANT_NOT_FOUND` : `sub_tenant_id` hors scope tenant.
+  - `422 NO_ISSUER_COMPANY` : pas de `sub_tenant_id` + pas de
+    `tenant.default_company_id`.
+
+### Migration payload create
+
+```php
+// AVANT (v2.7.x)
+$invoice = $client->tenantDirectInvoices()->create([
+    'company_id' => $companyId,
+    'buyer' => [...],
+    'lines' => [...],
+]);
+
+// APRES (v2.8.0+)
+$invoice = $client->tenantDirectInvoices()->create([
+    'sub_tenant_id' => $subTenantId, // optionnel : sans valeur, default_company_id
+    'buyer' => [...],
+    'lines' => [...],
+]);
+```
 
 ## v2.7.0 (2026-05-10) — Tenant Signatures URL-nested resource
 
@@ -538,7 +576,7 @@ $invoice = $client->invoices()->create([
 **Tenant Direct API** :
 ```php
 $invoice = $client->tenantDirectInvoices()->create([
-    'company_id' => $companyId,
+    'sub_tenant_id' => $subTenantId, // v2.8.0+ ; optionnel (default_company_id sinon)
     'buyer' => [
         'company_name'  => 'Marie Dupont',  // full name for individuals
         'address'       => [...],
@@ -1699,14 +1737,16 @@ $key    = $client->apiKeys()->rotate('uuid'); // rotate secret
 
 `Scell\Sdk\DTOs\ApiKey` — readonly class
 
-Properties:
+Properties (v2.8.0+) :
 - `id: string`
 - `name: string`
-- `key: string` — only present on create/rotate
-- `environment: string`
-- `permissions: string[]`
 - `lastUsedAt: ?string`
-- `createdAt: string`
+- `createdAt: ?string`
+- `key: ?string` — only present on create/rotate (alias backend `plain_text_key`)
+
+Note v2.8.0 : le champ `company_id` est definitivement retire. Une cle `sk_*`
+appartient au tenant entier ; le scope par company est porte au runtime par
+`sub_tenant_id` dans les payloads POST.
 
 ---
 

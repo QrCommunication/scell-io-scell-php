@@ -1,6 +1,36 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+
+## [2.8.0] - 2026-05-11
+
+### Breaking
+
+- Suppression du champ `company_id` du DTO `Scell\Sdk\DTOs\ApiKey` et de toutes les reponses `ApiKeyResource` (`list`, `create`). Le backend (refonte 2026-05-11) a supprime la colonne `api_keys.company_id` : une cle `sk_*` appartient desormais au tenant, jamais a une `company_id` precise.
+- Pour cibler un sub-tenant lors d'une operation (creation de facture, signature, etc.), passer `sub_tenant_id` dans le payload POST. Sans `sub_tenant_id`, l'action utilise `tenant.default_company_id` du master tenant.
+
+### Changed
+
+- `ApiKeyResource::create(array $data)` : ne plus envoyer `company_id` dans `$data`. Si vous le passiez, le backend l'ignorera silencieusement. Aucune signature de methode n'a change cote SDK (passe-through array).
+- Nouvelles erreurs HTTP a gerer cote consommateur :
+  - `401 TENANT_NOT_RESOLVED` : la cle `sk_*` n'est pas rattachee a un tenant actif.
+  - `404 SUB_TENANT_NOT_FOUND` : `sub_tenant_id` fourni mais introuvable / hors scope tenant.
+  - `422 NO_ISSUER_COMPANY` : pas de `sub_tenant_id` et `tenant.default_company_id` non defini.
+
+### Migration
+
+- Mettre a jour tout code qui lit `$apiKey->companyId` ou `$apiKey->company_id` : ce champ n'existe plus, le SDK ne le retournait deja plus via le DTO `readonly`.
+- Si vous appeliez `$client->apiKeys()->create(['company_id' => $id, ...])`, retirer la cle ; la cle creee couvre desormais l'ensemble du tenant.
+- Pour emettre une facture / signature scopee a un sub-tenant, ajouter `sub_tenant_id` au payload `create()` :
+
+```php
+$invoice = $client->tenantDirectInvoices()->create([
+    'sub_tenant_id' => $subTenantId, // remplace l'ancien 'company_id'
+    'buyer' => [...],
+    'lines' => [...],
+]);
+```
+
 ## [2.7.1] - 2026-05-10
 
 ### Fixed
