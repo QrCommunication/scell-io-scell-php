@@ -169,12 +169,15 @@ class HttpClient
     /**
      * Effectue une requete DELETE.
      *
+     * @param array<string, mixed> $query Query string params optionnels (depuis v2.9.0).
      * @return array<string, mixed>
      * @throws ScellException
      */
-    public function delete(string $path): array
+    public function delete(string $path, array $query = []): array
     {
-        return $this->request('DELETE', $path);
+        return $this->request('DELETE', $path, [
+            RequestOptions::QUERY => $query,
+        ]);
     }
 
     /**

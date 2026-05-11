@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.9.0] - 2026-05-11
+
+### Added
+
+- `SubTenantResource::superpdpAuthorize(string $id): SuperPDPAuthorizeUrl` : nouvel endpoint `POST /tenant/sub-tenants/{id}/superpdp-authorize` qui retourne une URL OAuth authorize fraiche (prefilled `login_hint` + `superpdp_company_number`) + un `state` anti-CSRF. A utiliser pour relancer le tunnel SuperPDP d'un sub-tenant (statut `pending_superpdp`, `superpdp_failed`, ou lorsque `refreshSuperPDPStatus()` retourne `MISSING_ACCESS_TOKEN`).
+- Nouveau DTO `Scell\Sdk\DTOs\SuperPDPAuthorizeUrl` (`authorizeUrl`, `state`).
+- `SubTenantResource::delete()` accepte desormais une option `cascade` pour supprimer en cascade les Companies du sub-tenant : `$api->subTenants()->delete($id, ['cascade' => true])`. Le backend retourne `companies_deleted` dans la reponse 200.
+
+### Changed
+
+- `SubTenantResource::delete(string $id)` -> `delete(string $id, array $options = []): array`. Le retour `void` devient `array{message?: string, companies_deleted?: int}`. **BC : les appels existants qui ignorent la valeur de retour continuent de fonctionner.** Seule rupture potentielle : un test qui type-hint `void` sur le retour.
+- `HttpClient::delete(string $path)` -> `delete(string $path, array $query = []): array`. BC compatible (parametre optionnel).
+- PHPDoc enrichi sur `SubTenantResource::refreshSuperPDPStatus()` documentant la nouvelle reponse 422 `MISSING_ACCESS_TOKEN` (avec `authorize_url` + `state`) et les codes `RATE_LIMITED` / `REFRESH_FAILED`.
+
+### Errors a gerer cote consommateur
+
+- `422 SUB_TENANT_HAS_COMPANIES` (avec `companies_count`) : le sub-tenant a des Companies actives mais aucune piece fiscale. Le caller peut retenter avec `['cascade' => true]`.
+- `422 SUB_TENANT_HAS_FISCAL_ENTRIES` : refus systematique (compliance ISCA, factures ou avoirs presents). Aucun force flag possible.
+- `422 MISSING_ACCESS_TOKEN` sur `refreshSuperPDPStatus()` : ouvrir `authorize_url` du payload (ou regenerer via `superpdpAuthorize()`).
+
 ## [2.8.0] - 2026-05-11
 
 ### Breaking
