@@ -17,6 +17,7 @@ use Scell\Sdk\Resources\TenantCreditNoteResource;
 use Scell\Sdk\Resources\TenantDirectInvoiceResource;
 use Scell\Sdk\Resources\TenantIncomingInvoiceResource;
 use Scell\Sdk\Resources\TenantInvoiceResource;
+use Scell\Sdk\Resources\QuoteResource;
 use Scell\Sdk\Resources\TenantSignatureResource;
 
 /**
@@ -72,6 +73,7 @@ class ScellApiClient
     private ?TenantIncomingInvoiceResource $incomingInvoices = null;
     private ?OnboardingResource $onboarding = null;
     private ?BuyerResource $buyers = null;
+    private ?QuoteResource $quotes = null;
 
     /**
      * Cree une instance du client API.
@@ -268,6 +270,14 @@ class ScellApiClient
     public function buyers(): BuyerResource
     {
         return $this->buyers ??= new BuyerResource($this->http);
+    }
+
+    /**
+     * Resource pour les devis (CRUD + send/cancel/convert/duplicate/audit).
+     */
+    public function quotes(): QuoteResource
+    {
+        return $this->quotes ??= new QuoteResource($this->http);
     }
 
     /**

@@ -2,6 +2,82 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.11.0] - 2026-05-15
+
+### Added
+
+- **QuoteResource** (`src/Resources/QuoteResource.php`) — resource complète pour les devis :
+  - CRUD : `create()`, `list()`, `get()`, `update()`, `delete()`
+  - Cycle de vie : `send()`, `cancel()`, `duplicate()`
+  - Conversion : `convertToDeposit()`, `convertToBalance()` → retournent un `Invoice`
+  - Audit : `auditLog()` → retourne `QuoteAuditEntry[]`
+  - Lien public : `regeneratePublicLink()`, `revokePublicLink()`
+  - PDF : `pdf()` (binaire), `preview()` (binaire sans persistance)
+  - Builder : `builder()` → `QuoteBuilder`
+- **QuoteBuilder** (`src/Builders/QuoteBuilder.php`) — builder fluent :
+  `buyer()`, `buyerId()`, `buyerIndividual()`, `buyerAsIndividual()`, `shippingAddress()`,
+  `line()`, `lines()`, `addLineDto()`, `validUntil()`, `signatureRequired()`,
+  `paymentTerms()`, `notes()`, `metadata()`, `subTenantId()`, `companyId()`,
+  `externalId()`, `depositSchedule()`, `currency()`, `build()`, `create()`
+- **DTO Quote** (`src/DTOs/Quote.php`) — représente un devis avec helpers :
+  `isDraft()`, `isSent()`, `isAccepted()`, `isRefused()`, `isCancelled()`,
+  `isConverted()`, `isExpired()`, `isSigned()`, `isB2c()`, `isConvertible()`, `isSandbox()`
+- **DTO QuoteLine** (`src/DTOs/QuoteLine.php`) — ligne de devis avec `create()` + `toArray()`
+- **DTO QuoteSignature** (`src/DTOs/QuoteSignature.php`) — état signature électronique du buyer
+- **DTO QuoteAuditEntry** (`src/DTOs/QuoteAuditEntry.php`) — entrée du journal d'audit
+- **Invoice DTO extensions** (rétrocompatibles, tous champs `null` par défaut) :
+  - `?string $invoiceType` — `'standard'` | `'deposit'` | `'balance'`
+  - `?string $parentQuoteId` — ID du devis source (si convertie depuis devis)
+  - `?string[] $parentInvoiceIds` — IDs des acomptes (si facture de solde)
+- **InvoiceBuilder extensions** (5 nouvelles méthodes) :
+  `parentQuoteId()`, `invoiceType()`, `depositAmount()`, `depositPercent()`, `depositLabel()`
+- **HttpClient** : ajout de `postRaw()` pour les requêtes POST retournant du binaire (PDF preview)
+- `ScellClient::quotes()` et `ScellApiClient::quotes()` exposent la `QuoteResource`
+
+### Compat
+
+- 100% rétrocompatible : les 3 nouveaux champs Invoice sont nullable et defaultent à `null`.
+  Les payloads pre-v2.11.0 hydratent correctement sans changement.
+- `InvoiceBuilder` : les 5 nouvelles méthodes sont additives, aucune méthode existante modifiée.
+
+## [2.10.0] - 2026-05-15
+
+### Fixed (mirror du fix backend du meme jour)
+
+- `GET /tenant/fiscal/closings` retournait 500 cote API des qu'une cloture
+  journaliere etait ancree OpenTimestamps (la colonne BYTEA `ots_proof`
+  faisait crasher `json_encode()`). Le backend l'a corrige en exposant le
+  receipt en base64. Ce SDK relaye le nouveau champ via
+  `FiscalClosingSummary::$otsProofBase64`.
+
+### Added
+
+- DTO `FiscalClosingSummary` enrichi avec les champs :
+  - `subTenantId`, `firstSequenceNumber`, `lastSequenceNumber`
+  - `closingHash` (clarification de `chainHash`)
+  - `previousClosingHash`
+  - `totals` (raw) et `cumulativeTotals`
+  - `csvPath`, `csvHash` (CSV de cloture sur S3)
+  - `otsProofBase64`, `otsStatus`, `otsSubmittedAt`,
+    `otsBitcoinConfirmedAt`, `otsCalendars`
+  - `metadata`
+- Methodes d'aide sur `FiscalClosingSummary` :
+  - `hasOtsProof(): bool` — receipt OpenTimestamps disponible ?
+  - `decodeOtsProof(): ?string` — decode le base64 vers le binaire
+    `.ots` (verifiable avec `ots verify` ou toute librairie OTS).
+
+### Compat
+
+- 100% retrocompatible : tous les nouveaux champs sont optionnels et
+  defaultent a `null`. Les payloads pre-v2.10.0 (avec uniquement
+  `chain_hash`, `total_debit`, `total_credit`) continuent d'hydrater
+  correctement.
+
+### Changed
+
+- `HttpClient::SDK_VERSION` bumpe de `'2.8.0'` (drift historique par
+  rapport au tag Git) a `'2.10.0'`.
+
 ## [2.9.0] - 2026-05-11
 
 ### Added

@@ -550,6 +550,60 @@ class InvoiceBuilder
     }
 
     /**
+     * Lie cette facture au devis dont elle est issue.
+     *
+     * Utilise lors de la conversion devis → facture via le workflow
+     * QuoteResource::convertToDeposit() ou convertToBalance().
+     */
+    public function parentQuoteId(string $id): self
+    {
+        $this->data['parent_quote_id'] = $id;
+        return $this;
+    }
+
+    /**
+     * Definit le type de facture dans le cycle devis-facture.
+     *
+     * @param 'standard'|'deposit'|'balance' $type
+     */
+    public function invoiceType(string $type): self
+    {
+        $this->data['invoice_type'] = $type;
+        return $this;
+    }
+
+    /**
+     * Definit le montant fixe de l'acompte (facture de type 'deposit').
+     *
+     * Preferer depositPercent() si le montant est exprime en pourcentage.
+     */
+    public function depositAmount(float $amount): self
+    {
+        $this->data['deposit_amount'] = $amount;
+        return $this;
+    }
+
+    /**
+     * Definit le pourcentage de l'acompte (facture de type 'deposit').
+     *
+     * @param float $pct Pourcentage entre 1 et 100 (ex: 30.0 pour 30%)
+     */
+    public function depositPercent(float $pct): self
+    {
+        $this->data['deposit_percent'] = $pct;
+        return $this;
+    }
+
+    /**
+     * Libelle personnalise de la ligne d'acompte sur la facture.
+     */
+    public function depositLabel(string $label): self
+    {
+        $this->data['deposit_label'] = $label;
+        return $this;
+    }
+
+    /**
      * Calcule automatiquement les totaux et cree la facture.
      */
     public function create(): Invoice

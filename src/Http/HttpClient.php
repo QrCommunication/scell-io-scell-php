@@ -21,7 +21,7 @@ use Scell\Sdk\Exceptions\ScellException;
  */
 class HttpClient
 {
-    public const SDK_VERSION = '2.8.0';
+    public const SDK_VERSION = '2.10.0';
     private Client $client;
     private string $baseUrl;
     private ?string $bearerToken = null;
@@ -218,6 +218,22 @@ class HttpClient
     {
         return $this->requestRaw('GET', $path, [
             RequestOptions::QUERY => $query,
+        ]);
+    }
+
+    /**
+     * Effectue une requete POST et retourne le contenu brut (binaire).
+     *
+     * Utile pour generer des PDF (preview, etc.) via POST.
+     *
+     * @param array<string, mixed> $data
+     * @return string Contenu binaire
+     * @throws ScellException
+     */
+    public function postRaw(string $path, array $data = []): string
+    {
+        return $this->requestRaw('POST', $path, [
+            RequestOptions::JSON => $data,
         ]);
     }
 

@@ -89,6 +89,25 @@ readonly class Invoice
          * identique a l'adresse de facturation (presomption EN16931).
          */
         public ?Address $buyerShippingAddress = null,
+        /**
+         * Type de facture dans le cycle de vie devis-facture.
+         * Valeurs : 'standard' (facture classique), 'deposit' (acompte),
+         * 'balance' (solde, deduit les acomptes). NULL pour les factures
+         * historiques anterieures au module devis.
+         */
+        public ?string $invoiceType = null,
+        /**
+         * ID du devis dont cette facture est issue (si convertie depuis un devis).
+         * NULL pour les factures crees directement.
+         */
+        public ?string $parentQuoteId = null,
+        /**
+         * IDs des factures d'acompte liees a cette facture de solde.
+         * NULL ou vide si la facture n'est pas de type 'balance'.
+         *
+         * @var string[]|null
+         */
+        public ?array $parentInvoiceIds = null,
     ) {}
 
     /**
@@ -149,6 +168,11 @@ readonly class Invoice
                 : (isset($data['buyer_shipping_address']) && is_array($data['buyer_shipping_address'])
                     ? Address::fromArray($data['buyer_shipping_address'])
                     : null),
+            invoiceType: $data['invoice_type'] ?? null,
+            parentQuoteId: $data['parent_quote_id'] ?? null,
+            parentInvoiceIds: isset($data['parent_invoice_ids']) && is_array($data['parent_invoice_ids'])
+                ? $data['parent_invoice_ids']
+                : null,
         );
     }
 

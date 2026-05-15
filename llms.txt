@@ -1,5 +1,40 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.8.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 2.10.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v2.10.0 (2026-05-15) — Fix 500 sur fiscal/closings + champ ots_proof_base64
+
+Release MINOR. Mirror du fix backend du meme jour.
+
+`GET /tenant/fiscal/closings` repondait 500 systematique des qu'une cloture
+quotidienne etait ancree OpenTimestamps : la colonne BYTEA `ots_proof`
+(magic bytes non-UTF8 du format `.ots`) faisait crasher `json_encode()` cote
+serveur. Le backend l'a fixe en l'exposant en base64 (champ
+`ots_proof_base64`). Ce SDK :
+
+- Enrichit le DTO `FiscalClosingSummary` avec : `subTenantId`,
+  `firstSequenceNumber`, `lastSequenceNumber`, `closingHash`,
+  `previousClosingHash`, `totals` (raw), `cumulativeTotals`, `csvPath`,
+  `csvHash`, `otsProofBase64`, `otsStatus`, `otsSubmittedAt`,
+  `otsBitcoinConfirmedAt`, `otsCalendars`, `metadata`.
+- Ajoute deux helpers : `hasOtsProof()` et `decodeOtsProof(): ?string`
+  pour recuperer le binaire `.ots` verifiable avec n'importe quel client
+  OpenTimestamps (`ots verify`).
+- 100% retrocompatible : tous les nouveaux champs sont nullable et les
+  payloads pre-v2.10.0 hydratent toujours correctement.
+- `HttpClient::SDK_VERSION` bumpe de `'2.8.0'` (drift historique) a
+  `'2.10.0'`.
+
+Exemple :
+
+```php
+foreach ($client->fiscal()->closings() as $closing) {
+    if ($closing->hasOtsProof()) {
+        $rawOts = $closing->decodeOtsProof();
+        file_put_contents("/tmp/{$closing->id}.ots", $rawOts);
+        // Verifier avec : ots verify /tmp/{closing->id}.ots
+    }
+}
+```
 
 ## v2.8.0 (2026-05-11) — BREAKING : `company_id` retire des cles API
 
@@ -2089,7 +2124,44 @@ Properties:
 
 ## FiscalClosingSummary DTO
 
-Properties: `id`, `type`, `status`, `entryCount`, `openedAt`, `closedAt`, `hash`
+Core properties:
+- `id: string` (uuid)
+- `tenantId: string` (uuid)
+- `subTenantId: ?string` (uuid, null pour les flux du tenant master)
+- `closingDate: string` (Y-m-d)
+- `closingType: string` (`daily` | `monthly` | `annual`)
+- `status: string` (`closed` | `anchored`)
+- `entriesCount: int`
+- `firstSequenceNumber: ?int`, `lastSequenceNumber: ?int`
+- `closingHash: ?string` (SHA-256 du contenu, chained avec le precedent)
+- `previousClosingHash: ?string`
+- `totals: ?array` (raw : invoices_count, invoices_total_ht/ttc/tax,
+  credit_notes_count/total, total_entries)
+- `cumulativeTotals: ?array`
+- `environment: ?string` (`sandbox` | `production`)
+- `csvPath: ?string` (S3 path du CSV de cloture)
+- `csvHash: ?string`
+- `metadata: ?array`
+- `createdAt: ?string` (ISO 8601)
+
+OpenTimestamps blockchain anchoring (depuis v2.10.0) :
+- `otsProofBase64: ?string` — receipt OpenTimestamps base64. Le binaire
+  brut `ots_proof` n'est PAS expose en JSON (incompatible UTF-8).
+- `otsStatus: ?string` (`pending` | `bitcoin_confirmed` | `failed`)
+- `otsSubmittedAt: ?string`, `otsBitcoinConfirmedAt: ?string`
+- `otsCalendars: ?array` (etat par calendar : alice/bob/finney)
+
+Compat retro :
+- `chainHash: ?string` (alias de `closingHash` ; rempli aussi quand le
+  payload contient le legacy `chain_hash`).
+- `totalDebit: float`, `totalCredit: float` (derives de `totals` si non
+  fournis).
+
+Helpers :
+- `isClosed(): bool`
+- `hasOtsProof(): bool` — vrai si un receipt OTS est attache
+- `decodeOtsProof(): ?string` — retourne le binaire `.ots` decode (a
+  passer a `ots verify` ou tout client OpenTimestamps)
 
 ## FiscalEntry DTO
 
