@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Scell\Sdk\Resources;
 
 use DateTimeInterface;
+use Scell\Sdk\DTOs\DateBlock;
+use Scell\Sdk\DTOs\InitialsBlock;
+use Scell\Sdk\DTOs\Mention;
 use Scell\Sdk\DTOs\PaginatedResult;
 use Scell\Sdk\DTOs\Signature;
 use Scell\Sdk\DTOs\Signer;
@@ -74,6 +77,9 @@ class SignatureResource
      *     signature_positions?: array[],
      *     ui_config?: array,
      *     signature_options?: array,
+     *     initials_block?: InitialsBlock|array,
+     *     mentions?: array<Mention|array>,
+     *     date_block?: DateBlock|array,
      *     redirect_complete_url?: string,
      *     redirect_cancel_url?: string,
      *     expires_at?: DateTimeInterface|string,
@@ -195,6 +201,23 @@ class SignatureResource
         }
         if (isset($data['signature_options'])) {
             $payload['signature_options'] = $data['signature_options'];
+        }
+        // v2.12 — Signature blocks (paraphe / mentions / date)
+        if (isset($data['initials_block'])) {
+            $payload['initials_block'] = $data['initials_block'] instanceof InitialsBlock
+                ? $data['initials_block']->toArray()
+                : $data['initials_block'];
+        }
+        if (isset($data['mentions'])) {
+            $payload['mentions'] = array_map(
+                fn($m) => $m instanceof Mention ? $m->toArray() : $m,
+                $data['mentions']
+            );
+        }
+        if (isset($data['date_block'])) {
+            $payload['date_block'] = $data['date_block'] instanceof DateBlock
+                ? $data['date_block']->toArray()
+                : $data['date_block'];
         }
         if (isset($data['redirect_complete_url'])) {
             $payload['redirect_complete_url'] = $data['redirect_complete_url'];
@@ -457,6 +480,83 @@ class SignatureBuilder
         if (!empty($filtered)) {
             $this->data['signature_options'] = $filtered;
         }
+        return $this;
+    }
+
+    /**
+     * Configure le bloc paraphe (initiales automatiques sur les pages du
+     * PDF signe) — v2.12.0.
+     *
+     * Accepte un DTO {@see InitialsBlock} ou un tableau associatif :
+     * ```php
+     * ->initialsBlock([
+     *     'enabled'  => true,
+     *     'mode'     => 'auto',           // 'auto' | 'custom'
+     *     'source'   => 'signer_name',    // 'signer_name' | 'custom'
+     *     'pages'    => 'all',            // 'all' | 'except_last' | [1,2,5]
+     *     'position' => ['x' => 90, 'y' => 95, 'unit' => 'percent'],
+     *     'font_size'=> 10,
+     *     'color'    => '#333333',
+     * ])
+     * ```
+     *
+     * @param InitialsBlock|array<string, mixed> $config
+     */
+    public function initialsBlock(InitialsBlock|array $config): self
+    {
+        $this->data['initials_block'] = $config;
+        return $this;
+    }
+
+    /**
+     * Configure le tableau des mentions juridiques (ex: "Lu et approuve",
+     * "Bon pour accord"...) gravees sur le PDF — v2.12.0.
+     *
+     * Remplace toute liste precedente. Pour ajouter une seule mention
+     * incrementalement, utiliser {@see addMention()}.
+     *
+     * @param array<Mention|array<string, mixed>> $mentions
+     */
+    public function mentions(array $mentions): self
+    {
+        $this->data['mentions'] = $mentions;
+        return $this;
+    }
+
+    /**
+     * Ajoute une mention juridique au tableau — v2.12.0.
+     *
+     * @param Mention|array<string, mixed> $mention
+     */
+    public function addMention(Mention|array $mention): self
+    {
+        if (!isset($this->data['mentions']) || !is_array($this->data['mentions'])) {
+            $this->data['mentions'] = [];
+        }
+        $this->data['mentions'][] = $mention;
+        return $this;
+    }
+
+    /**
+     * Configure le bloc date du jour grave sur le PDF signe — v2.12.0.
+     *
+     * Accepte un DTO {@see DateBlock} ou un tableau associatif :
+     * ```php
+     * ->dateBlock([
+     *     'enabled'  => true,
+     *     'format'   => 'd/m/Y',
+     *     'timezone' => 'Europe/Paris',
+     *     'position' => ['page' => 'last', 'x' => 80, 'y' => 10, 'unit' => 'percent'],
+     *     'font_size'=> 10,
+     *     'color'    => '#000000',
+     * ])
+     * ```
+     *
+     * @param DateBlock|array<string, mixed> $config
+     */
+    public function dateBlock(DateBlock|array $config): self
+    {
+        $this->data['date_block'] = $config;
         return $this;
     }
 

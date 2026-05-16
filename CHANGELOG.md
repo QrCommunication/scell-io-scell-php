@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.12.0] - 2026-05-16
+
+### Added — Signature blocks (paraphe + mentions juridiques + date)
+
+Trois nouveaux champs **optionnels** sur `POST /api/v1/signatures`, exposes
+via `SignatureBuilder` ou directement sur `SignatureResource::create()`.
+100% retrocompatibles : un payload pre-v2.12.0 reste valide a l'identique.
+
+- **`initials_block`** — bloc paraphe (initiales automatiques sur les pages
+  du PDF signe). Modes `'auto'` / `'custom'`, source `'signer_name'` /
+  `'custom'`, pages `'all'` / `'except_last'` / liste explicite.
+- **`mentions[]`** — mentions juridiques per-signer (ex: « Lu et approuve »,
+  « Bon pour accord »). Champ `signer_index` (0-based), position avec
+  `page` obligatoire, `required` + `fallback_text`.
+- **`date_block`** — bloc date du jour grave sur le PDF (format PHP `date()`
+  + timezone IANA). La `page` peut etre `'last'`.
+
+Nouveaux DTOs (tous `readonly`, validation defensive au constructeur) :
+
+| DTO | Role |
+|-----|------|
+| `Scell\Sdk\DTOs\InitialsBlock` | Configuration bloc paraphe. |
+| `Scell\Sdk\DTOs\Mention` | Mention juridique per-signer. |
+| `Scell\Sdk\DTOs\DateBlock` | Configuration bloc date du jour. |
+| `Scell\Sdk\DTOs\BlockPosition` | Position partagee (page + x/y/w/h + unit). |
+
+Nouvelles methodes fluent sur `SignatureBuilder` :
+
+- `initialsBlock(InitialsBlock|array $config)`
+- `mentions(array $mentions)` — remplace toute liste precedente.
+- `addMention(Mention|array $mention)` — append incremental.
+- `dateBlock(DateBlock|array $config)`
+
+Chaque setter accepte un tableau associatif (snake_case) OU un DTO type.
+
+### Tests
+
+- `tests/SignatureBlocksTest.php` — 10 nouveaux tests (serialization wire,
+  retrocompat, support DTO + array, validation defensive, round-trip
+  `BlockPosition`). Total suite : 68 tests / 285 assertions, PHPStan OK.
+
+### Compat
+
+- Aucun champ existant modifie ou supprime.
+- Tous les DTOs nouveaux : pas d'impact sur le code consommateur pre-v2.12.0.
+- Suit la cascade backend Scell.io : si le payload ne contient pas le champ,
+  l'API se comporte comme avant (pas de bloc).
+
 ## [2.11.0] - 2026-05-15
 
 ### Added

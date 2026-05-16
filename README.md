@@ -218,6 +218,57 @@ $signature = $api->signatures()->builder()
     ->create();
 ```
 
+#### Blocs personnalises (paraphe + mentions + date) — v2.12.0
+
+```php
+use Scell\Sdk\DTOs\BlockPosition;
+use Scell\Sdk\DTOs\DateBlock;
+use Scell\Sdk\DTOs\InitialsBlock;
+use Scell\Sdk\DTOs\Mention;
+
+$signature = $api->signatures()->builder()
+    ->title('Contrat de prestation')
+    ->documentFromFile('/path/to/contract.pdf')
+    ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
+
+    // 1) Bloc paraphe : initiales auto sur toutes les pages (sauf derniere).
+    //    Accepte un tableau brut OU un DTO InitialsBlock.
+    ->initialsBlock([
+        'enabled'   => true,
+        'mode'      => 'auto',           // 'auto' | 'custom'
+        'source'    => 'signer_name',    // 'signer_name' | 'custom'
+        'pages'     => 'except_last',    // 'all' | 'except_last' | [1,2,5]
+        'position'  => ['x' => 90, 'y' => 95, 'unit' => 'percent'],
+        'font_size' => 10,
+        'color'     => '#333333',
+    ])
+
+    // 2) Mentions juridiques per-signer (label + position + signer_index 0-based).
+    //    Le signataire saisit le texte (required=true) ; sinon fallback_text est grave.
+    ->addMention(new Mention(
+        label: 'Lu et approuve',
+        signerIndex: 0,
+        position: new BlockPosition(x: 10, y: 80, page: 1, w: 60, h: 8),
+        required: true,
+        fallbackText: 'Lu et approuve',
+    ))
+
+    // 3) Bloc date du jour (page 'last' = derniere page calculee par le backend).
+    ->dateBlock(new DateBlock(
+        enabled: true,
+        position: new BlockPosition(x: 80, y: 10, page: 'last'),
+        format: 'd/m/Y',
+        timezone: 'Europe/Paris',
+    ))
+
+    ->create();
+```
+
+Notes :
+- Les 3 champs sont **optionnels** et 100% retrocompatibles avec les payloads pre-v2.12.0.
+- Chaque setter accepte un tableau associatif (snake_case) OU un DTO type. Les DTO valident defensivement les valeurs au constructeur.
+- `BlockPosition::page` accepte un entier (1-indexe) pour les mentions ; pour `initialsBlock` / `dateBlock`, la chaine `'last'` est aussi acceptee.
+
 ### Client Dashboard (Bearer token)
 
 Pour les operations via le dashboard utilisateur:
