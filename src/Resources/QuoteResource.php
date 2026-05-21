@@ -38,9 +38,30 @@ use Scell\Sdk\Http\HttpClient;
  */
 class QuoteResource
 {
+    private ?QuotePaymentScheduleResource $paymentSchedule = null;
+
     public function __construct(
         private readonly HttpClient $http
     ) {}
+
+    /**
+     * Resource pour l'echeancier de paiement du devis.
+     *
+     * Permet de definir, modifier, tracker et convertir les echeances.
+     *
+     * @example
+     * ```php
+     * $api->quotes()->paymentSchedule()->set($quoteId, [
+     *     ['amount_type' => 'percent', 'amount_value' => 30, 'due_date' => '2026-06-15'],
+     *     ['amount_type' => 'percent', 'amount_value' => 70, 'milestone_label' => 'Livraison'],
+     * ]);
+     * $summary = $api->quotes()->paymentSchedule()->summary($quoteId);
+     * ```
+     */
+    public function paymentSchedule(): QuotePaymentScheduleResource
+    {
+        return $this->paymentSchedule ??= new QuotePaymentScheduleResource($this->http);
+    }
 
     /**
      * Cree un nouveau devis.

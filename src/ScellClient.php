@@ -6,6 +6,7 @@ namespace Scell\Sdk;
 
 use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\BalanceResource;
+use Scell\Sdk\Resources\BrandingResource;
 use Scell\Sdk\Resources\BuyerResource;
 use Scell\Sdk\Resources\CompanyResource;
 use Scell\Sdk\Resources\InvoiceResource;
@@ -56,6 +57,7 @@ class ScellClient
     private ?ApiKeyResource $apiKeys = null;
     private ?CreditNoteResource $creditNotes = null;
     private ?QuoteResource $quotes = null;
+    private ?BrandingResource $branding = null;
 
     /**
      * Cree une instance du client avec Bearer token.
@@ -159,6 +161,14 @@ class ScellClient
     public function quotes(): QuoteResource
     {
         return $this->quotes ??= new QuoteResource($this->http);
+    }
+
+    /**
+     * Resource pour la configuration de marque (branding) tenant et sub-tenant.
+     */
+    public function branding(): BrandingResource
+    {
+        return $this->branding ??= new BrandingResource($this->http);
     }
 
     /**

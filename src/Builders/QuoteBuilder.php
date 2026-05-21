@@ -221,6 +221,39 @@ class QuoteBuilder
     }
 
     /**
+     * Definit l'echeancier de paiement du devis.
+     *
+     * Permet d'associer directement un echeancier lors de la creation du devis.
+     * Peut aussi etre defini apres creation via QuotePaymentScheduleResource::set().
+     *
+     * @param array<int, array{
+     *     amount_type: 'percent'|'amount',
+     *     amount_value: float,
+     *     due_date?: string,
+     *     milestone_label?: string,
+     *     description?: string,
+     *     auto_generate?: bool
+     * }> $lines
+     *
+     * @example
+     * ```php
+     * $quote = $api->quotes()->builder()
+     *     ->buyer('12345678901234', 'Client SA', new Address(...))
+     *     ->line('Prestation', 10, 500.00, 20.0)
+     *     ->withPaymentSchedule([
+     *         ['amount_type' => 'percent', 'amount_value' => 30, 'due_date' => '2026-06-01'],
+     *         ['amount_type' => 'percent', 'amount_value' => 70, 'milestone_label' => 'Livraison'],
+     *     ])
+     *     ->create();
+     * ```
+     */
+    public function withPaymentSchedule(array $lines): self
+    {
+        $this->data['payment_schedule'] = ['lines' => $lines];
+        return $this;
+    }
+
+    /**
      * Retourne le payload brut sans appel API.
      */
     public function build(): array

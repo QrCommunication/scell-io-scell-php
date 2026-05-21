@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.13.0] - 2026-05-21
+
+### Added
+
+- **`QuotePaymentScheduleResource`** — echeancier de paiement complet pour les devis :
+  - `list(string $quoteId): PaymentScheduleLine[]` — GET `/v1/quotes/{quote}/payment-schedule`
+  - `set(string $quoteId, array $lines): PaymentScheduleLine[]` — POST (remplace entierement)
+  - `patch(string $quoteId, array $changes): PaymentScheduleLine[]` — PATCH (add/update/remove)
+  - `delete(string $quoteId): void` — DELETE (supprime toutes les lignes)
+  - `summary(string $quoteId): PaymentSummary` — GET `/v1/quotes/{quote}/payment-summary` (tracker)
+  - `convertLine(string $quoteId, string $lineId, array $options): Invoice` — POST convert ligne → acompte
+  - `presets(): array` — GET `/v1/payment-schedule-presets` (presets preconfigures)
+- **`BrandingResource`** — configuration de marque tenant et sub-tenant :
+  - `getTenant(): Branding`, `updateTenant(array $data): Branding`
+  - `getSubTenant(string $id): Branding`, `updateSubTenant(string $id, array $data): Branding`
+  - `logoUploadUrlTenant(string $mimeType): array` — URL presignee S3 upload logo tenant
+  - `logoUploadUrlSubTenant(string $id, string $mimeType): array` — URL presignee sub-tenant
+  - `previewTenant(): string`, `previewSubTenant(string $id): string` — apercu HTML/PDF
+- **`InvoiceResource::sendByEmail()`** — envoi facture par email :
+  - `sendByEmail(string $invoiceId, array $options = []): array` — POST `/v1/invoices/{id}/send-by-email`
+  - Options : `email`, `subject`, `message`, `cc`, `bcc`, `force_branding`
+- **`QuoteBuilder::withPaymentSchedule(array $lines): self`** — echeancier lors de la creation du devis
+- **Acces echeancier depuis `QuoteResource`** : `$api->quotes()->paymentSchedule()->list($quoteId)`
+- **Nouveaux DTOs** :
+  - `PaymentScheduleLine` — ligne d'echeancier (order, amountType, amountValue, status, dueDate, milestoneLabel, invoiceId, helpers: isPending/isInvoiced/isCancelled/isLocked/isOverdue)
+  - `PaymentSummary` — tracker solde (totalTtc, netInvoiced, remaining, percentInvoiced, linesTotal, helpers: isComplete/allScheduleLinesInvoiced)
+  - `Branding` — configuration marque (logoUrl, primaryColor, emailFooter, emailSignature, isComplete, helper: isReady)
+- **`Buyer::$billingEmail`** — adresse email de facturation distincte de l'email de contact
+- **5 exceptions typees** dans `Scell\Sdk\Exceptions\` :
+  - `QuoteNotEditableException` (409 QUOTE_NOT_EDITABLE) — devis non modifiable (signe/accepte/facture)
+  - `ScheduleLineAlreadyInvoicedException` (422 SCHEDULE_LINE_ALREADY_INVOICED)
+  - `ScheduleSumExceedsTotalException` (422 SCHEDULE_SUM_EXCEEDS_TOTAL)
+  - `BuyerHasNoEmailException` (422 BUYER_HAS_NO_EMAIL)
+  - `InvoiceBrandingIncompleteException` (422 INVOICE_BRANDING_INCOMPLETE)
+- **`BrandingResource`** enregistree dans `ScellApiClient::branding()` et `ScellClient::branding()`
+
 ## [2.12.0] - 2026-05-16
 
 ### Added — Signature blocks (paraphe + mentions juridiques + date)

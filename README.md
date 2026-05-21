@@ -735,6 +735,99 @@ class InvoiceService
 }
 ```
 
+## Echeancier de paiement (Payment Schedule)
+
+Associez un echeancier d'acomptes a un devis et convertissez chaque ligne en facture acompte.
+
+```php
+// Creer un devis avec echeancier integre
+$quote = $api->quotes()->builder()
+    ->buyer('12345678901234', 'Client SA', new Address('1 rue Test', '75001', 'Paris'))
+    ->line('Prestation conseil', 1, 5000.00, 20.0)
+    ->withPaymentSchedule([
+        ['amount_type' => 'percent', 'amount_value' => 30, 'due_date' => '2026-06-01'],
+        ['amount_type' => 'percent', 'amount_value' => 70, 'milestone_label' => 'Livraison finale'],
+    ])
+    ->create();
+
+// Acceder aux lignes de l'echeancier
+$lines = $api->quotes()->paymentSchedule()->list($quote->id);
+foreach ($lines as $line) {
+    echo "{$line->order}. {$line->amountValue}% — {$line->status}\n";
+}
+
+// Remplacer entierement l'echeancier
+$lines = $api->quotes()->paymentSchedule()->set($quote->id, [
+    ['amount_type' => 'percent', 'amount_value' => 50, 'due_date' => '2026-07-01'],
+    ['amount_type' => 'percent', 'amount_value' => 50, 'milestone_label' => 'Recette'],
+]);
+
+// Modifier une ligne specifique (PATCH partiel)
+$lines = $api->quotes()->paymentSchedule()->patch($quote->id, [
+    'update' => [['id' => $lineId, 'due_date' => '2026-07-15']],
+]);
+
+// Tracker financier (montants, avancement)
+$summary = $api->quotes()->paymentSchedule()->summary($quote->id);
+echo "Reste a facturer : {$summary->remaining} EUR ({$summary->percentInvoiced}% deja)\n";
+if ($summary->isComplete()) {
+    echo "Devis entierement facture.\n";
+}
+
+// Convertir une ligne en facture acompte
+$depositInvoice = $api->quotes()->paymentSchedule()->convertLine($quote->id, $lineId, [
+    'issue_date' => '2026-06-01',
+]);
+
+// Consulter les presets preconfigures (30/70, 3x mensuel, etc.)
+$presets = $api->quotes()->paymentSchedule()->presets();
+
+// Supprimer tout l'echeancier
+$api->quotes()->paymentSchedule()->delete($quote->id);
+```
+
+## Branding (Marque tenant et sub-tenant)
+
+Personnalisez le logo, la couleur primaire et les textes des emails et PDFs emis.
+
+```php
+// Consulter la configuration de marque du tenant
+$branding = $api->branding()->getTenant();
+if (!$branding->isReady()) {
+    echo "Branding incomplet — les emails utilisent la marque Scell.io par defaut.\n";
+}
+
+// Mettre a jour le branding tenant
+$branding = $api->branding()->updateTenant([
+    'primary_color' => '#1a73e8',
+    'email_footer' => 'Ma Societe SAS — SIRET 123 456 789 00010 — TVA FR12345678901',
+    'email_signature' => "L'equipe Ma Societe",
+]);
+
+// Uploader un logo via URL presignee S3
+$upload = $api->branding()->logoUploadUrlTenant('image/png');
+// PUT $upload['url'] avec le binaire du logo
+// Puis confirmer le logo_url via updateTenant(['logo_url' => $upload['public_url']])
+
+// Branding d'un sub-tenant
+$branding = $api->branding()->getSubTenant($subTenantId);
+$branding = $api->branding()->updateSubTenant($subTenantId, [
+    'primary_color' => '#e83e1a',
+    'email_footer' => 'Mon Client SARL — SIRET 98765432109876',
+]);
+
+// URL presignee logo sub-tenant
+$upload = $api->branding()->logoUploadUrlSubTenant($subTenantId, 'image/jpeg');
+
+// Envoyer une facture par email (utilise le branding tenant si isReady())
+$result = $api->invoices()->sendByEmail($invoiceId, [
+    'email'   => 'client@example.com',
+    'subject' => 'Votre facture FA-2026-0042',
+    'message' => 'Veuillez trouver ci-joint votre facture.',
+]);
+echo "Email envoye a {$result['recipient']} le {$result['sent_at']}\n";
+```
+
 ## Gestion des erreurs
 
 ```php
@@ -761,6 +854,34 @@ try {
     // Autre erreur API
     echo "Erreur: {$e->getMessage()}";
     echo "Code: {$e->getScellCode()}";
+}
+```
+
+### Exceptions metier specifiques (v2.13.0+)
+
+```php
+use Scell\Sdk\Exceptions\QuoteNotEditableException;
+use Scell\Sdk\Exceptions\ScheduleLineAlreadyInvoicedException;
+use Scell\Sdk\Exceptions\ScheduleSumExceedsTotalException;
+use Scell\Sdk\Exceptions\BuyerHasNoEmailException;
+use Scell\Sdk\Exceptions\InvoiceBrandingIncompleteException;
+
+try {
+    $invoice = $api->quotes()->paymentSchedule()->convertLine($quoteId, $lineId);
+} catch (QuoteNotEditableException $e) {
+    // Devis signe/accepte : impossible de modifier l'echeancier (409)
+} catch (ScheduleLineAlreadyInvoicedException $e) {
+    // Cette ligne a deja ete convertie en facture (422)
+} catch (ScheduleSumExceedsTotalException $e) {
+    // La somme des lignes depasse le total TTC du devis (422)
+}
+
+try {
+    $result = $api->invoices()->sendByEmail($invoiceId);
+} catch (BuyerHasNoEmailException $e) {
+    // L'acheteur n'a pas d'adresse email dans le registre (422)
+} catch (InvoiceBrandingIncompleteException $e) {
+    // Le branding tenant est incomplet — passer force_branding: false (422)
 }
 ```
 
@@ -864,12 +985,13 @@ composer check
 | `companies()` | Gestion des entreprises |
 | `balance()` | Consultation du solde |
 | `webhooks()` | Gestion des webhooks |
+| `branding()` | Configuration marque tenant (logo, couleur, textes emails) |
 
 ### ScellApiClient (API Key)
 
 | Resource | Description |
 |----------|-------------|
-| `invoices()` | Factures (builder, download, audit trail) |
+| `invoices()` | Factures (builder, download, audit trail, sendByEmail) |
 | `signatures()` | Signatures (builder, download, audit trail) |
 | `subTenants()` | Gestion des sub-tenants (CRUD, recherche) |
 | `tenantInvoices()` | Factures des sub-tenants (create, submit, update) |
@@ -879,6 +1001,8 @@ composer check
 | `fiscal()` | Conformite fiscale ISCA (integrite, clotures, FEC) |
 | `stats()` | Statistiques (overview, monthly, par sub-tenant) |
 | `billing()` | Facturation plateforme (invoices, usage, top-up) |
+| `quotes()` | Devis (builder, send, convert, echeancier, paymentSchedule()) |
+| `branding()` | Configuration marque tenant + sub-tenant (logo, couleur, emails) |
 
 ### ScellTenantClient (Multi-Tenant Partner)
 

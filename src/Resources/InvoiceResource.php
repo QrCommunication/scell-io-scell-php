@@ -202,6 +202,33 @@ class InvoiceResource
     }
 
     /**
+     * Envoie la facture par email a l'acheteur.
+     *
+     * L'acheteur doit avoir un email ou billing_email renseigne.
+     * Si le branding tenant est complet (logo + couleur + footer), il est
+     * utilise. Sinon, le branding Scell.io est applique par defaut.
+     * La facture est automatiquement validee (draft → validated) si necessaire.
+     *
+     * @param string $invoiceId UUID de la facture
+     * @param array{
+     *     email?: string,
+     *     subject?: string,
+     *     message?: string,
+     *     cc?: string[],
+     *     bcc?: string[],
+     *     force_branding?: 'tenant'|'scell'
+     * } $options
+     * @return array{message: string, sent_at: string, recipient: string}
+     *
+     * @throws \Scell\Sdk\Exceptions\BuyerHasNoEmailException si aucun email acheteur
+     * @throws \Scell\Sdk\Exceptions\InvoiceBrandingIncompleteException si branding tenant force mais incomplet
+     */
+    public function sendByEmail(string $invoiceId, array $options = []): array
+    {
+        return $this->http->post("invoices/{$invoiceId}/send-by-email", $options);
+    }
+
+    /**
      * Cree une facture avec le builder fluent.
      *
      * @return InvoiceBuilder

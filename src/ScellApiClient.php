@@ -13,6 +13,7 @@ use Scell\Sdk\Resources\OnboardingResource;
 use Scell\Sdk\Resources\SignatureResource;
 use Scell\Sdk\Resources\StatsResource;
 use Scell\Sdk\Resources\SubTenantResource;
+use Scell\Sdk\Resources\BrandingResource;
 use Scell\Sdk\Resources\TenantCreditNoteResource;
 use Scell\Sdk\Resources\TenantDirectInvoiceResource;
 use Scell\Sdk\Resources\TenantIncomingInvoiceResource;
@@ -74,6 +75,7 @@ class ScellApiClient
     private ?OnboardingResource $onboarding = null;
     private ?BuyerResource $buyers = null;
     private ?QuoteResource $quotes = null;
+    private ?BrandingResource $branding = null;
 
     /**
      * Cree une instance du client API.
@@ -278,6 +280,16 @@ class ScellApiClient
     public function quotes(): QuoteResource
     {
         return $this->quotes ??= new QuoteResource($this->http);
+    }
+
+    /**
+     * Resource pour la configuration de marque (branding) tenant et sub-tenant.
+     *
+     * Gere le logo, la couleur primaire et les textes des emails/PDFs emis.
+     */
+    public function branding(): BrandingResource
+    {
+        return $this->branding ??= new BrandingResource($this->http);
     }
 
     /**

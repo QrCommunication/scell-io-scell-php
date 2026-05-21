@@ -31,6 +31,8 @@ readonly class Buyer
         public ?string $legalId = null,
         public ?string $legalIdScheme = null,
         public ?string $email = null,
+        /** Adresse email de facturation (si differente de l'email de contact). */
+        public ?string $billingEmail = null,
         public ?string $phone = null,
         public bool $hasDistinctShippingAddress = false,
         public ?array $metadata = null,
@@ -57,6 +59,7 @@ readonly class Buyer
             legalId: $data['legal_id'] ?? null,
             legalIdScheme: $data['legal_id_scheme'] ?? null,
             email: $data['email'] ?? null,
+            billingEmail: $data['billing_email'] ?? null,
             phone: $data['phone'] ?? null,
             hasDistinctShippingAddress: (bool) ($data['has_distinct_shipping_address'] ?? false),
             metadata: $data['metadata'] ?? null,
