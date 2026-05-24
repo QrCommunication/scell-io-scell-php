@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.13.1] - 2026-05-24
+
+### Added
+
+- **`callback_url`** — Le tenant peut fournir une URL de callback à la
+  création du devis. Après acceptation ou refus via le viewer public,
+  le buyer est redirigé vers cette URL avec query string
+  `?status=signed|refused&quote_id=<UUID>&quote_number=<num>&reason=<txt>`.
+  Permet au tenant de capturer le buyer dans son propre flow métier
+  (page de remerciement custom, dashboard client, automation
+  post-signature).
+- **`QuoteBuilder::callbackUrl(string $url)`** — méthode fluent pour
+  définir l'URL au montage du devis.
+- **`Quote::$callbackUrl`** — propriété DTO + mapping `fromArray`.
+
+### Backend
+
+- Migration `quotes.callback_url` (VARCHAR(500) nullable).
+- Validation `nullable url max:500` dans `StoreQuoteRequest` et
+  `UpdateQuoteRequest`.
+- `QuoteResource` + `QuotePublicResource` exposent `callback_url`.
+- Viewer SPA (`app.scell.io`) : helper `buildCallbackUrl()` + redirect
+  `window.location.href` après accept/refuse avec query string enrichie.
+  Fallback page Scell.io si URL invalide.
+
 ## [2.13.0] - 2026-05-21
 
 ### Added
