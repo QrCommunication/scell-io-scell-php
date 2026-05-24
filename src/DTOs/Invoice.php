@@ -108,6 +108,44 @@ readonly class Invoice
          * @var string[]|null
          */
         public ?array $parentInvoiceIds = null,
+        /**
+         * UUID du groupe d'acomptes standalone auquel appartient cette facture.
+         * Renseigne sur les factures d'acompte directes (sans devis parent),
+         * crees avec invoice_type='deposit'. Toutes les factures du groupe
+         * partagent le meme deposit_group_id.
+         * Disponible depuis SDK 2.15.0 (API 2026-05-24).
+         */
+        public ?string $depositGroupId = null,
+        /**
+         * Montant total HT du deal commercial, stocke a la creation du groupe.
+         * Sert a suivre la progression des acomptes emis.
+         * Disponible depuis SDK 2.15.0.
+         */
+        public ?float $depositTotalHt = null,
+        /**
+         * Texte de reference libre pour le groupe d'acomptes
+         * (numero de bon de commande, reference contrat...).
+         * Disponible depuis SDK 2.15.0.
+         */
+        public ?string $depositReferenceText = null,
+        /**
+         * Progression du groupe d'acomptes (present uniquement sur le detail,
+         * pas sur les listes). NULL si la facture n'appartient pas a un groupe.
+         * Structure : deposit_total_ht, sum_deposits_ht, remaining_ht,
+         * progress_percent (0-100), has_balance, invoices_count, invoices[].
+         * Disponible depuis SDK 2.15.0.
+         *
+         * @var array{
+         *     deposit_total_ht: float,
+         *     sum_deposits_ht: float,
+         *     remaining_ht: float,
+         *     progress_percent: float,
+         *     has_balance: bool,
+         *     invoices_count: int,
+         *     invoices: array<array{id: string, invoice_type: string, total_ht: float, invoice_number: string}>
+         * }|null
+         */
+        public ?array $depositGroupProgress = null,
     ) {}
 
     /**
@@ -172,6 +210,12 @@ readonly class Invoice
             parentQuoteId: $data['parent_quote_id'] ?? null,
             parentInvoiceIds: isset($data['parent_invoice_ids']) && is_array($data['parent_invoice_ids'])
                 ? $data['parent_invoice_ids']
+                : null,
+            depositGroupId: $data['deposit_group_id'] ?? null,
+            depositTotalHt: isset($data['deposit_total_ht']) ? (float) $data['deposit_total_ht'] : null,
+            depositReferenceText: $data['deposit_reference_text'] ?? null,
+            depositGroupProgress: isset($data['deposit_group_progress']) && is_array($data['deposit_group_progress'])
+                ? $data['deposit_group_progress']
                 : null,
         );
     }

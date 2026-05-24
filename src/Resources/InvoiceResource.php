@@ -399,6 +399,21 @@ class InvoiceResource
             $payload['archive_enabled'] = $data['archive_enabled'];
         }
 
+        // Champs acomptes standalone (SDK 2.15.0)
+        if (isset($data['invoice_type'])) {
+            $payload['invoice_type'] = $data['invoice_type'];
+        }
+        if (array_key_exists('deposit_group_id', $data)) {
+            // Passer explicitement null pour rejoindre un groupe sans UUID
+            $payload['deposit_group_id'] = $data['deposit_group_id'];
+        }
+        if (isset($data['deposit_total_ht'])) {
+            $payload['deposit_total_ht'] = $data['deposit_total_ht'];
+        }
+        if (isset($data['deposit_reference_text'])) {
+            $payload['deposit_reference_text'] = $data['deposit_reference_text'];
+        }
+
         return $payload;
     }
 }
@@ -627,6 +642,65 @@ class InvoiceBuilder
     public function depositLabel(string $label): self
     {
         $this->data['deposit_label'] = $label;
+        return $this;
+    }
+
+    /**
+     * Definit le type de la facture standalone (sans devis parent).
+     *
+     * Utiliser 'deposit' pour une facture d'acompte directe (TVA immediatement
+     * exigible, CGI art. 289) ou 'balance' pour une facture de solde qui
+     * deduit les acomptes precedents (Factur-X BG-22 code '80').
+     *
+     * @param 'standard'|'deposit'|'balance' $type
+     *
+     * Disponible depuis SDK 2.15.0.
+     */
+    public function invoiceTypeStandalone(string $type): self
+    {
+        $this->data['invoice_type'] = $type;
+        return $this;
+    }
+
+    /**
+     * UUID d'un groupe d'acomptes existant a rejoindre.
+     *
+     * Si absent / null : un nouveau groupe est cree (uniquement pertinent
+     * avec invoice_type='deposit').
+     * Si fourni : lie cette facture au groupe existant. Le UUID doit
+     * appartenir au meme tenant/sub-tenant (404 sinon, anti-IDOR).
+     *
+     * Disponible depuis SDK 2.15.0.
+     */
+    public function depositGroupId(?string $groupId): self
+    {
+        $this->data['deposit_group_id'] = $groupId;
+        return $this;
+    }
+
+    /**
+     * Montant total HT du deal commercial.
+     *
+     * Stocke sur le groupe a la creation ; ignore si un deposit_group_id
+     * existant est fourni.
+     *
+     * Disponible depuis SDK 2.15.0.
+     */
+    public function depositTotalHt(float $amount): self
+    {
+        $this->data['deposit_total_ht'] = $amount;
+        return $this;
+    }
+
+    /**
+     * Texte de reference libre pour le groupe d'acomptes
+     * (numero de bon de commande, reference contrat, etc.). Max 500 chars.
+     *
+     * Disponible depuis SDK 2.15.0.
+     */
+    public function depositReferenceText(string $text): self
+    {
+        $this->data['deposit_reference_text'] = $text;
         return $this;
     }
 
