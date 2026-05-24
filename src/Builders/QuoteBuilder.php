@@ -201,6 +201,22 @@ class QuoteBuilder
     }
 
     /**
+     * URL de callback : redirige le buyer vers cette URL apres acceptation
+     * ou refus du devis, avec query string :
+     *   ?status=signed|refused&quote_id=...&quote_number=...&reason=...
+     *
+     * Permet au tenant de capturer le buyer dans son propre flow metier
+     * (page de remerciement custom, dashboard client, automation).
+     *
+     * @param string $url URL absolue (https://...), max 500 chars
+     */
+    public function callbackUrl(string $url): self
+    {
+        $this->data['callback_url'] = $url;
+        return $this;
+    }
+
+    /**
      * Echeancier d'acomptes associe au devis.
      *
      * @param array[] $schedule Tableau d'echeances [{amount, percent, label, due_date}]

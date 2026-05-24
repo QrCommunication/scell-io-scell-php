@@ -64,6 +64,13 @@ readonly class Quote
         public ?string $depositInvoiceId = null,
         /** ID de la facture de solde convertie (si convertToBalance appele). */
         public ?string $balanceInvoiceId = null,
+        /**
+         * URL de callback fournie a la creation. Le viewer public redirige
+         * le buyer vers cette URL apres accept/refuse avec status + IDs +
+         * reason en query string. Null = comportement par defaut (page
+         * confirmation Scell.io).
+         */
+        public ?string $callbackUrl = null,
     ) {}
 
     /**
@@ -132,6 +139,7 @@ readonly class Quote
             depositSchedule: $data['deposit_schedule'] ?? null,
             depositInvoiceId: $data['deposit_invoice_id'] ?? null,
             balanceInvoiceId: $data['balance_invoice_id'] ?? null,
+            callbackUrl: $data['callback_url'] ?? null,
         );
     }
 
