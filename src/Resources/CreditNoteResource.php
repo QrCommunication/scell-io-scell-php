@@ -13,7 +13,7 @@ use Scell\Sdk\Http\HttpClient;
  * Resource pour les avoirs (credit notes) du dashboard.
  *
  * Permet de creer, lister et gerer les avoirs via Bearer token (utilisateur connecte).
- * La suppression est interdite (conformite ISCA).
+ * Brouillons modifiables et supprimables. Apres envoi, l'avoir est immutable (ISCA).
  *
  * @example
  * ```php
@@ -97,6 +97,30 @@ class CreditNoteResource
         $response = $this->http->post('credit-notes', $data);
 
         return CreditNote::fromArray($response['data']);
+    }
+
+    /**
+     * Met a jour un avoir en brouillon.
+     *
+     * @param string $id UUID de l'avoir
+     * @param array<string, mixed> $data Donnees partielles a mettre a jour
+     */
+    public function update(string $id, array $data): CreditNote
+    {
+        $response = $this->http->put("credit-notes/{$id}", $data);
+        return CreditNote::fromArray($response['data']);
+    }
+
+    /**
+     * Supprime un avoir en brouillon.
+     *
+     * Seuls les avoirs en statut `draft` peuvent etre supprimes.
+     *
+     * @param string $id UUID de l'avoir
+     */
+    public function delete(string $id): void
+    {
+        $this->http->delete("credit-notes/{$id}");
     }
 
     /**

@@ -90,6 +90,31 @@ class InvoiceResource
     }
 
     /**
+     * Update a draft invoice.
+     *
+     * Only invoices in `draft` status can be updated. Once submitted or
+     * validated, the invoice is immutable (ISCA compliance).
+     *
+     * @param array<string, mixed> $data Partial invoice data
+     */
+    public function update(string $id, array $data): Invoice
+    {
+        $response = $this->http->put("invoices/{$id}", $data);
+        return Invoice::fromArray($response['data']);
+    }
+
+    /**
+     * Delete a draft invoice.
+     *
+     * Only invoices in `draft` status can be deleted. Once submitted,
+     * validated, or transmitted, deletion is blocked (ISCA compliance).
+     */
+    public function delete(string $id): void
+    {
+        $this->http->delete("invoices/{$id}");
+    }
+
+    /**
      * Liste les factures entrantes (fournisseurs).
      *
      * @param array{
