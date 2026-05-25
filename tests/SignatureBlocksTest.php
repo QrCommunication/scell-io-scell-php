@@ -16,6 +16,7 @@ use ReflectionProperty;
 use Scell\Sdk\DTOs\BlockPosition;
 use Scell\Sdk\DTOs\DateBlock;
 use Scell\Sdk\DTOs\InitialsBlock;
+use Scell\Sdk\DTOs\InitialsPosition;
 use Scell\Sdk\DTOs\Mention;
 use Scell\Sdk\Enums\AuthMethod;
 use Scell\Sdk\Http\HttpClient;
@@ -367,5 +368,194 @@ class SignatureBlocksTest extends TestCase
         $this->assertSame($pos->w, $rebuilt->w);
         $this->assertSame($pos->h, $rebuilt->h);
         $this->assertSame($pos->unit, $rebuilt->unit);
+    }
+
+    /* =========================================================================
+     | v2.15.0 — InitialsPosition (positions[] multi-pages)
+     | ======================================================================= */
+
+    #[Test]
+    public function initials_position_serializes_minimal_fields(): void
+    {
+        $pos = new InitialsPosition(page: 2, x: 88.5, y: 92);
+
+        $arr = $pos->toArray();
+        $this->assertSame(2, $arr['page']);
+        $this->assertSame(88.5, $arr['x']);
+        $this->assertSame(92.0, $arr['y']);
+        $this->assertSame('percent', $arr['unit']);
+        $this->assertArrayNotHasKey('font_size', $arr);
+        $this->assertArrayNotHasKey('color', $arr);
+        $this->assertArrayNotHasKey('bold', $arr);
+    }
+
+    #[Test]
+    public function initials_position_serializes_full_fields_with_per_page_overrides(): void
+    {
+        $pos = new InitialsPosition(
+            page: 3,
+            x: 100,
+            y: 200,
+            unit: 'pixel',
+            pageWidthPx: 595,
+            pageHeightPx: 842,
+            fontSize: 12,
+            color: '#AA0000',
+            bold: true,
+        );
+
+        $arr = $pos->toArray();
+        $this->assertSame(3, $arr['page']);
+        $this->assertSame('pixel', $arr['unit']);
+        $this->assertSame(595, $arr['page_width_px']);
+        $this->assertSame(842, $arr['page_height_px']);
+        $this->assertSame(12, $arr['font_size']);
+        $this->assertSame('#AA0000', $arr['color']);
+        $this->assertTrue($arr['bold']);
+    }
+
+    #[Test]
+    public function initials_position_rejects_invalid_page(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new InitialsPosition(page: 0, x: 50, y: 50);
+    }
+
+    #[Test]
+    public function initials_position_rejects_invalid_color(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new InitialsPosition(page: 1, x: 50, y: 50, color: 'red');
+    }
+
+    #[Test]
+    public function initials_position_round_trips_via_array(): void
+    {
+        $original = new InitialsPosition(
+            page: 5,
+            x: 75.5,
+            y: 80.0,
+            unit: 'percent',
+            fontSize: 11,
+            color: '#123456',
+        );
+
+        $rebuilt = InitialsPosition::fromArray($original->toArray());
+        $this->assertSame($original->page, $rebuilt->page);
+        $this->assertSame($original->x, $rebuilt->x);
+        $this->assertSame($original->y, $rebuilt->y);
+        $this->assertSame($original->fontSize, $rebuilt->fontSize);
+        $this->assertSame($original->color, $rebuilt->color);
+    }
+
+    #[Test]
+    public function initials_block_with_positions_emits_new_format(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(201, ['Content-Type' => 'application/json'], json_encode($this->signatureFixture()))],
+            $captured,
+        );
+        $resource = new SignatureResource($http);
+
+        $block = InitialsBlock::withPositions(
+            positions: [
+                new InitialsPosition(page: 1, x: 90, y: 90),
+                new InitialsPosition(page: 2, x: 88, y: 92, fontSize: 12),
+                new InitialsPosition(page: 3, x: 85, y: 90, color: '#AA0000'),
+            ],
+            fontSize: 10,
+            color: '#000000',
+        );
+
+        $resource->builder()
+            ->title('Multi-page paraphe')
+            ->document('PDF', 'doc.pdf')
+            ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
+            ->initialsBlock($block)
+            ->create();
+
+        $body = $this->lastRequestBody($captured);
+        $ib = $body['initials_block'];
+
+        // Nouveau format : positions[] est emis, position+pages legacy sont omis.
+        $this->assertArrayHasKey('positions', $ib);
+        $this->assertArrayNotHasKey('position', $ib);
+        $this->assertArrayNotHasKey('pages', $ib);
+        $this->assertCount(3, $ib['positions']);
+        $this->assertSame([1, 2, 3], array_column($ib['positions'], 'page'));
+        $this->assertSame(12, $ib['positions'][1]['font_size']);
+        $this->assertSame('#AA0000', $ib['positions'][2]['color']);
+    }
+
+    #[Test]
+    public function initials_block_positions_array_round_trips_via_from_array(): void
+    {
+        $raw = [
+            'enabled' => true,
+            'mode' => 'auto',
+            'positions' => [
+                ['page' => 1, 'x' => 90, 'y' => 90, 'unit' => 'percent'],
+                ['page' => 2, 'x' => 88, 'y' => 92, 'unit' => 'percent', 'font_size' => 12],
+            ],
+            'font_size' => 10,
+            'color' => '#000000',
+        ];
+
+        $block = InitialsBlock::fromArray($raw);
+
+        $this->assertNotNull($block->positions);
+        $this->assertCount(2, $block->positions);
+        $this->assertSame(1, $block->positions[0]->page);
+        $this->assertSame(12, $block->positions[1]->fontSize);
+
+        $serialized = $block->toArray();
+        $this->assertArrayHasKey('positions', $serialized);
+        $this->assertArrayNotHasKey('position', $serialized);
+    }
+
+    #[Test]
+    public function initials_block_legacy_format_still_works_without_positions(): void
+    {
+        $block = new InitialsBlock(
+            enabled: true,
+            position: new BlockPosition(x: 90, y: 95),
+            pages: 'except_last',
+            fontSize: 10,
+        );
+
+        $arr = $block->toArray();
+
+        // Legacy : positions[] absent, position + pages presents.
+        $this->assertArrayNotHasKey('positions', $arr);
+        $this->assertArrayHasKey('position', $arr);
+        $this->assertSame('except_last', $arr['pages']);
+    }
+
+    #[Test]
+    public function initials_block_positions_takes_priority_over_legacy_position(): void
+    {
+        // Cas conflit explicite : positions[] gagne.
+        $block = new InitialsBlock(
+            enabled: true,
+            position: new BlockPosition(x: 99, y: 99),
+            pages: 'all',
+            positions: [new InitialsPosition(page: 1, x: 50, y: 50)],
+        );
+
+        $arr = $block->toArray();
+        $this->assertArrayHasKey('positions', $arr);
+        $this->assertArrayNotHasKey('position', $arr);
+        $this->assertArrayNotHasKey('pages', $arr);
+    }
+
+    #[Test]
+    public function initials_block_rejects_non_initials_position_in_positions(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new InitialsBlock(
+            enabled: true,
+            positions: ['not-an-instance'],
+        );
     }
 }

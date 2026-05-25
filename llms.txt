@@ -3162,3 +3162,77 @@ src/
 └── Webhooks/
     └── WebhookVerifier.php      # also contains WebhookPayload DTO
 ```
+
+---
+
+## Signature blocks (v2.15.0 — paraphe multi-page, mentions, date)
+
+`SignatureBuilder::initialsBlock()` (et `mentions()`, `dateBlock()`) acceptent
+DTO ou tableaux bruts (snake_case).
+
+### Initiales multi-page (v2.15.0)
+
+Deux formats supportés, le nouveau `positions[]` (1 entrée par page) prévaut
+sur le legacy `position + pages` si les deux sont fournis.
+
+```php
+use Scell\Sdk\DTOs\InitialsBlock;
+use Scell\Sdk\DTOs\InitialsPosition;
+
+// NEW (v2.15.0) — positions[] avec overrides per-page
+$block = InitialsBlock::withPositions(
+    positions: [
+        new InitialsPosition(page: 1, x: 90, y: 90),
+        new InitialsPosition(page: 2, x: 88, y: 92, fontSize: 12),
+        new InitialsPosition(page: 3, x: 85, y: 90, color: '#AA0000'),
+    ],
+    fontSize: 10,
+    color: '#000000',
+);
+
+// LEGACY — toujours supporté
+use Scell\Sdk\DTOs\BlockPosition;
+$block = new InitialsBlock(
+    enabled: true,
+    position: new BlockPosition(x: 90, y: 95),
+    pages: 'except_last',  // 'all' | 'except_last' | int[]
+);
+
+$client->signatures->builder()
+    ->title('Contrat')
+    ->document(base64_encode($pdfBytes), 'doc.pdf')
+    ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
+    ->initialsBlock($block)
+    ->create();
+```
+
+### Mentions + Date
+
+```php
+use Scell\Sdk\DTOs\Mention;
+use Scell\Sdk\DTOs\DateBlock;
+
+$builder
+    ->mentions([
+        new Mention(
+            label: 'Lu et approuve',
+            signerIndex: 0,
+            position: new BlockPosition(x: 10, y: 80, page: 1),
+            required: true,
+        ),
+    ])
+    ->dateBlock(new DateBlock(
+        enabled: true,
+        format: 'd/m/Y',
+        timezone: 'Europe/Paris',
+        position: new BlockPosition(x: 80, y: 10, page: 'last'),
+    ))
+    ->create();
+```
+
+DTOs disponibles :
+- `Scell\Sdk\DTOs\InitialsBlock` — bloc paraphe complet (+ accepte positions[])
+- `Scell\Sdk\DTOs\InitialsPosition` — **NEW v2.15.0** position individuelle (page, x, y, overrides)
+- `Scell\Sdk\DTOs\BlockPosition` — position generique (utilise par legacy + mentions + date)
+- `Scell\Sdk\DTOs\Mention` — mention juridique gravée
+- `Scell\Sdk\DTOs\DateBlock` — bloc date du jour

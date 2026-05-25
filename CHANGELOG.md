@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.15.0] - 2026-05-25
+
+### Added
+
+- **Initiales multi-pages — `initials_block.positions[]`** : nouveau format permettant
+  de définir UNE position différente PAR PAGE pour le bloc paraphe. Chaque entrée
+  peut surcharger `font_size`, `color`, `bold` au-delà des valeurs du bloc.
+  - Nouveau DTO `Scell\Sdk\DTOs\InitialsPosition` (page, x, y, unit, fontSize, color,
+    bold, pageWidthPx, pageHeightPx).
+  - `InitialsBlock` accepte désormais un argument `positions: ?array<InitialsPosition>`.
+  - Constructeur d'agrément `InitialsBlock::withPositions([...])`.
+  - Champ `InitialsBlock::bold` ajouté (défaut bloc, surchargeable per-position).
+
+```php
+use Scell\Sdk\DTOs\InitialsBlock;
+use Scell\Sdk\DTOs\InitialsPosition;
+
+$block = InitialsBlock::withPositions(
+    positions: [
+        new InitialsPosition(page: 1, x: 90, y: 90),
+        new InitialsPosition(page: 2, x: 88, y: 92, fontSize: 12),
+        new InitialsPosition(page: 3, x: 85, y: 90, color: '#AA0000'),
+    ],
+    fontSize: 10,
+    color: '#000000',
+);
+```
+
+### Changed
+
+- `InitialsBlock::toArray()` émet `positions[]` quand fourni et OMET `position`/`pages`
+  legacy pour éviter toute ambiguïté côté serveur (qui priorise déjà `positions[]`).
+- `InitialsBlock::position` devient nullable (`?BlockPosition`) — usage positionnel
+  `new InitialsBlock(true, $pos, ...)` continue de fonctionner.
+
+### Compatibility
+
+- **100% rétrocompatible** : le format legacy `position + pages` (string `'all'` /
+  `'except_last'` / `int[]`) reste pleinement supporté.
+- Si les deux formats sont fournis, `positions[]` prévaut (alignement backend).
+
 ## [2.13.1] - 2026-05-24
 
 ### Added
