@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.15.1] - 2026-05-25
+
+### Changed
+
+- Documentation: rewording générique des mentions du fournisseur de signature partenaire (aucun changement de surface publique).
+
 ## [2.15.0] - 2026-05-25
 
 ### Added
@@ -613,10 +619,10 @@ $client->invoiceTemplates()->markDefault($templateId);
 - `addSignaturePosition()` accepte un 6e parametre `$unit` (`'percent'` par defaut, `'pixel'` pour coordonnees absolues).
 
 ### Changed (BREAKING)
-- `SignatureBuilder::uiConfig(array $config)` — signature changee : accepte un tableau associatif (anciennement 3 parametres positionnels `logoUrl`/`primaryColor`/`companyName`). Accepte les 21 champs UI alignes sur la spec OpenAPI.com (`sidebar_logo`, `sidebar_background_color`, `sidebar_text_color`, `header_*`, `footer_*`, `button_*`, `sign_button_*`, `hide_*`, `iframe_ancestors`).
+- `SignatureBuilder::uiConfig(array $config)` — signature changee : accepte un tableau associatif (anciennement 3 parametres positionnels `logoUrl`/`primaryColor`/`companyName`). Accepte les 21 champs UI alignés sur la spec EU-SES certifiée (`sidebar_logo`, `sidebar_background_color`, `sidebar_text_color`, `header_*`, `footer_*`, `button_*`, `sign_button_*`, `hide_*`, `iframe_ancestors`).
 
 ### Removed (BREAKING)
-- `SignatureBuilder::uiConfig($logoUrl, $primaryColor, $companyName)` (signature 3-params) supprimee. Utiliser `uiConfig(array $config)` avec les nouveaux champs spec OpenAPI.com (`sidebar_logo`, `sidebar_background_color`, etc.). Le champ `company_name` n'a pas d'equivalent (non supporte par OpenAPI.com).
+- `SignatureBuilder::uiConfig($logoUrl, $primaryColor, $companyName)` (signature 3-params) supprimee. Utiliser `uiConfig(array $config)` avec les nouveaux champs de la spec EU-SES (`sidebar_logo`, `sidebar_background_color`, etc.). Le champ `company_name` n'a pas d'équivalent (non supporté par la spec EU-SES).
 
 ### Fixed
 - Documentation `addSignaturePosition()` : x/y sont en `'percent'` par defaut (0-100), pas pixels.

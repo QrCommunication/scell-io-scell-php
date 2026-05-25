@@ -402,8 +402,8 @@ class SignatureBuilder
     }
 
     /**
-     * Configure l'interface utilisateur (white-label) — 21 champs alignes sur
-     * la spec officielle OpenAPI.com EU-SES v1.0.17.
+     * Configure l'interface utilisateur (white-label) — 21 champs alignés sur
+     * la spec EU-SES (eIDAS certifiée).
      *
      * Couleurs : tous les champs `*_color` attendent du hex `#RRGGBB`.
      * Logo : URL absolue HTTPS publique (max 500 chars).
