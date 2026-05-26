@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.17.0] - 2026-05-26
+
+### Security
+- Documentation alignée avec les hardenings serveur Scell.io (audit 2026-05-26) :
+  - Le secret webhook n'est désormais exposé en clair QU'UNE FOIS, à la création (`webhooks.create()`) ou à la régénération (`webhooks.regenerateSecret()`). Les `webhooks.get()` ultérieurs retournent un fingerprint masqué + `secret_last4`. Stockez le secret immédiatement dans un secret manager.
+  - La signature webhook utilise le format Stripe-like `X-Scell-Signature: t={timestamp},v1=HMAC(timestamp.payload)` avec fenêtre anti-replay de 5 minutes. La classe `WebhookVerifier` (déjà présente depuis v2.x) gère ce format nativement.
+  - Les URLs webhook configurées via `webhooks.create()` doivent obligatoirement être HTTPS et pointer vers une IP publique (validation SSRF côté serveur).
+- Champ `WebhookDTO::$secret_last4` ajouté (toujours présent, sert au debug et au fingerprint).
+
 ## [2.16.0] - 2026-05-26
 
 ### Added
