@@ -67,6 +67,16 @@ class SignatureResource
     /**
      * Cree une nouvelle demande de signature.
      *
+     * Multi-document (v2.16.0) — pour faire signer plusieurs PDFs en une
+     * seule operation, passer `attachments[]` (max 10 PJ, 20 Mo cumules).
+     * Le backend Scell.io merge automatiquement le document principal +
+     * les pieces jointes en un PDF unique avant submission au prestataire
+     * de signature (page de garde + numerotation continue). Pour cibler
+     * un document specifique dans une `signature_positions[]`,
+     * `mentions[].position`, `initials_block.positions[]` ou `date_block.position`,
+     * utiliser le champ `document_index` (`0` = principal, `1..N` =
+     * attachments dans l'ordre).
+     *
      * @param array{
      *     title: string,
      *     document: string,
@@ -80,6 +90,7 @@ class SignatureResource
      *     initials_block?: InitialsBlock|array,
      *     mentions?: array<Mention|array>,
      *     date_block?: DateBlock|array,
+     *     attachments?: array<array{document: string, document_name: string}>,
      *     redirect_complete_url?: string,
      *     redirect_cancel_url?: string,
      *     expires_at?: DateTimeInterface|string,
@@ -219,6 +230,10 @@ class SignatureResource
                 ? $data['date_block']->toArray()
                 : $data['date_block'];
         }
+        // v2.16 — Multi-document : pieces jointes mergees cote backend.
+        if (isset($data['attachments']) && !empty($data['attachments'])) {
+            $payload['attachments'] = array_values($data['attachments']);
+        }
         if (isset($data['redirect_complete_url'])) {
             $payload['redirect_complete_url'] = $data['redirect_complete_url'];
         }
@@ -246,6 +261,8 @@ class SignatureBuilder
     private array $data = [];
     private array $signers = [];
     private array $signaturePositions = [];
+    /** @var list<array{document: string, document_name: string}> */
+    private array $attachments = [];
 
     public function __construct(
         private readonly SignatureResource $resource
@@ -359,6 +376,10 @@ class SignatureBuilder
      * fallback A4 (595x842 px) — pratique pour la plupart des cas. A fournir
      * explicitement uniquement si vous avez deja parse le PDF cote client.
      *
+     * Multi-document (v2.16.0) — `documentIndex` permet de cibler un PDF
+     * specifique dans un bundle (`attachments[]`) : `0` = document principal,
+     * `1..N` = attachments dans l'ordre. Defaut `null` = document principal.
+     *
      * @param int        $page          Numero de page (1-indexe).
      * @param float      $x             Position X (percent 0-100 ou pixels).
      * @param float      $y             Position Y (percent 0-100 ou pixels).
@@ -367,6 +388,7 @@ class SignatureBuilder
      * @param string     $unit          `'percent'` (defaut) ou `'pixel'`.
      * @param int|null   $pageWidthPx   Largeur de la page en px @72dpi (override du parser auto).
      * @param int|null   $pageHeightPx  Hauteur de la page en px @72dpi (override du parser auto).
+     * @param int|null   $documentIndex Cible un document du bundle (0 = principal, 1..N = attachments). 0..10.
      */
     public function addSignaturePosition(
         int $page,
@@ -377,7 +399,13 @@ class SignatureBuilder
         string $unit = 'percent',
         ?int $pageWidthPx = null,
         ?int $pageHeightPx = null,
+        ?int $documentIndex = null,
     ): self {
+        if ($documentIndex !== null && ($documentIndex < 0 || $documentIndex > 10)) {
+            throw new \InvalidArgumentException(
+                "Invalid documentIndex {$documentIndex}. Must be between 0 and 10 (0 = main document, 1..N = attachments)."
+            );
+        }
         $position = [
             'page' => $page,
             'x' => $x,
@@ -396,9 +424,101 @@ class SignatureBuilder
         if ($pageHeightPx !== null) {
             $position['page_height_px'] = $pageHeightPx;
         }
+        if ($documentIndex !== null) {
+            $position['document_index'] = $documentIndex;
+        }
 
         $this->signaturePositions[] = $position;
         return $this;
+    }
+
+    /**
+     * Definit la liste complete des pieces jointes (multi-document, v2.16.0).
+     *
+     * Le backend Scell.io accepte un PDF principal (`document`) plus jusqu'a
+     * **10 pieces jointes** (`attachments[]`), pour un total cumule de
+     * **20 Mo**. Tous les fichiers sont mergees en un PDF unique cote serveur
+     * (page de garde + numerotation continue) avant submission au prestataire
+     * de signature partenaire. Les positions de signature, mentions, paraphes
+     * et bloc date peuvent cibler un document precis via leur champ
+     * `document_index` (`0` = principal, `1..N` = attachments dans l'ordre).
+     *
+     * Chaque entree doit etre un tableau de la forme :
+     * ```
+     * ['document' => '<base64>', 'document_name' => 'annexe.pdf']
+     * ```
+     *
+     * Remplace toute liste precedente. Pour ajouter une PJ incrementalement,
+     * utiliser {@see addAttachment()}.
+     *
+     * @param list<array{document: string, document_name: string}> $attachments
+     */
+    public function attachments(array $attachments): self
+    {
+        if (count($attachments) > 10) {
+            throw new \InvalidArgumentException(
+                'A signature can have a maximum of 10 attachments (got ' . count($attachments) . ').'
+            );
+        }
+        $this->attachments = array_values($attachments);
+        return $this;
+    }
+
+    /**
+     * Ajoute une piece jointe (PDF) au bundle multi-document — v2.16.0.
+     *
+     * Le contenu doit etre deja encode en **base64**. Limite : 10 PJ max,
+     * 20 Mo cumules avec le document principal. Le backend Scell.io merge
+     * automatiquement principal + PJs en un PDF unique avant submission au
+     * prestataire de signature partenaire.
+     *
+     * @example
+     * ```php
+     * $resource->builder()
+     *     ->title('Contrat + annexes')
+     *     ->document(file_get_contents('contrat.pdf'), 'contrat.pdf')
+     *     ->addAttachment(base64_encode(file_get_contents('cgv.pdf')), 'cgv.pdf')
+     *     ->addAttachment(base64_encode(file_get_contents('annexe.pdf')), 'annexe.pdf')
+     *     ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
+     *     ->addSignaturePosition(page: 5, x: 70, y: 80, documentIndex: 0) // sur contrat
+     *     ->addSignaturePosition(page: 1, x: 70, y: 80, documentIndex: 2) // sur annexe
+     *     ->create();
+     * ```
+     *
+     * @param string $document     Contenu PDF encode en base64.
+     * @param string $documentName Nom du fichier (ex: `'annexe.pdf'`).
+     */
+    public function addAttachment(string $document, string $documentName): self
+    {
+        if (count($this->attachments) >= 10) {
+            throw new \InvalidArgumentException(
+                'A signature can have a maximum of 10 attachments.'
+            );
+        }
+        $this->attachments[] = [
+            'document' => $document,
+            'document_name' => $documentName,
+        ];
+        return $this;
+    }
+
+    /**
+     * Ajoute une piece jointe depuis un fichier local (encodage base64 auto) — v2.16.0.
+     *
+     * Helper de convenance qui lit le fichier, l'encode en base64 et le push
+     * dans le tableau d'attachments. Voir {@see addAttachment()} pour les
+     * limites et le comportement de merge cote backend.
+     *
+     * @param string      $path     Chemin vers le PDF a ajouter.
+     * @param string|null $name     Nom optionnel (defaut : basename($path)).
+     */
+    public function addAttachmentFromFile(string $path, ?string $name = null): self
+    {
+        if (!file_exists($path)) {
+            throw new \InvalidArgumentException("Fichier non trouve: {$path}");
+        }
+        $content = file_get_contents($path);
+        return $this->addAttachment(base64_encode($content), $name ?? basename($path));
     }
 
     /**
@@ -605,6 +725,10 @@ class SignatureBuilder
 
         if (!empty($this->signaturePositions)) {
             $this->data['signature_positions'] = $this->signaturePositions;
+        }
+
+        if (!empty($this->attachments)) {
+            $this->data['attachments'] = $this->attachments;
         }
 
         return $this->resource->create($this->data);

@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.16.0] - 2026-05-26
+
+### Added
+
+- **Multi-document signatures — `attachments[]`** : la creation de signature
+  (`POST /api/v1/signatures`) accepte desormais jusqu'a **10 pieces jointes
+  PDF** (20 Mo cumules avec le document principal). Le backend Scell.io merge
+  automatiquement principal + PJs en un PDF unique (page de garde +
+  numerotation continue) avant submission au prestataire de signature
+  partenaire.
+  - Nouvelle methode fluent `SignatureBuilder::addAttachment(string $document, string $documentName): self`
+    (`$document` doit etre deja encode en base64).
+  - Helper de convenance `SignatureBuilder::addAttachmentFromFile(string $path, ?string $name = null): self`
+    qui lit le fichier + encode base64 automatiquement.
+  - Setter bulk `SignatureBuilder::attachments(array $attachments): self`
+    (remplace toute liste precedente, max 10).
+  - Champ `attachments` accepte aussi en payload brut dans `SignatureResource::create([...])`.
+- **`document_index`** : nouveau champ optionnel sur les positions permettant
+  de cibler un document precis dans un bundle multi-PDF. `0` = document
+  principal (`document`/`document_name`), `1..N` = attachments dans l'ordre.
+  Defaut `null` (= document principal cote backend). Plage validee 0..10.
+  - `BlockPosition::$documentIndex` (utilise par `Mention` + `DateBlock`).
+  - `InitialsPosition::$documentIndex` (paraphe multi-pages, per-position).
+  - `SignatureBuilder::addSignaturePosition(..., ?int $documentIndex = null)`.
+
+```php
+use Scell\Sdk\DTOs\BlockPosition;
+use Scell\Sdk\DTOs\InitialsBlock;
+use Scell\Sdk\DTOs\InitialsPosition;
+use Scell\Sdk\DTOs\Mention;
+
+$signature = $client->signatures()->builder()
+    ->title('Contrat + CGV + annexe')
+    ->document(file_get_contents('contrat.pdf'), 'contrat.pdf')
+    ->addAttachmentFromFile('cgv.pdf')                // index 1
+    ->addAttachmentFromFile('annexe.pdf')             // index 2
+    ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
+    ->addSignaturePosition(page: 5, x: 70, y: 80, documentIndex: 0)  // contrat
+    ->addSignaturePosition(page: 1, x: 70, y: 80, documentIndex: 2)  // annexe
+    ->addMention(new Mention(
+        label: 'Lu et approuve',
+        signerIndex: 0,
+        position: new BlockPosition(x: 10, y: 80, page: 1, documentIndex: 1),
+    ))
+    ->initialsBlock(InitialsBlock::withPositions([
+        new InitialsPosition(page: 1, x: 90, y: 90, documentIndex: 0),
+        new InitialsPosition(page: 1, x: 90, y: 90, documentIndex: 1),
+    ]))
+    ->create();
+```
+
+### Compatibility
+
+- **100% retrocompatible** : `attachments` et `document_index` sont strictement
+  optionnels. Si absents, le payload reste identique a v2.15.x (mono-document).
+- Validations defensives : exception levee si > 10 attachments ou si
+  `documentIndex` hors plage `0..10`.
+
 ## [2.15.1] - 2026-05-25
 
 ### Changed

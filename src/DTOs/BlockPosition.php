@@ -17,6 +17,11 @@ use InvalidArgumentException;
  * - Pour une mention : la `page` est OBLIGATOIRE (entier 1-indexe).
  * - `w` / `h` sont optionnels (taille du bloc) : si absents, le backend
  *   utilise une taille calculee depuis `font_size`.
+ * - `documentIndex` (v2.16.0) : permet de cibler un document specifique
+ *   dans un bundle multi-PDF (`attachments[]` du payload de creation).
+ *   `0` = document principal (`document`/`document_name`), `1..N` =
+ *   attachments dans l'ordre du tableau. Defaut `null` (= document
+ *   principal cote backend). Plage validee : 0..10 (max 10 PJ).
  */
 readonly class BlockPosition
 {
@@ -27,6 +32,7 @@ readonly class BlockPosition
         public ?float $w = null,
         public ?float $h = null,
         public string $unit = 'percent',
+        public ?int $documentIndex = null,
     ) {
         if (!in_array($unit, ['percent', 'pixel'], true)) {
             throw new InvalidArgumentException(
@@ -41,6 +47,11 @@ readonly class BlockPosition
         if (is_int($page) && $page < 1) {
             throw new InvalidArgumentException(
                 "Invalid page {$page}. Must be a positive integer (1-indexed)."
+            );
+        }
+        if ($documentIndex !== null && ($documentIndex < 0 || $documentIndex > 10)) {
+            throw new InvalidArgumentException(
+                "Invalid documentIndex {$documentIndex}. Must be between 0 and 10 (0 = main document, 1..N = attachments)."
             );
         }
     }
@@ -59,6 +70,7 @@ readonly class BlockPosition
             w: isset($data['w']) ? (float) $data['w'] : null,
             h: isset($data['h']) ? (float) $data['h'] : null,
             unit: $data['unit'] ?? 'percent',
+            documentIndex: isset($data['document_index']) ? (int) $data['document_index'] : null,
         );
     }
 
@@ -82,6 +94,9 @@ readonly class BlockPosition
         }
         if ($this->h !== null) {
             $out['h'] = $this->h;
+        }
+        if ($this->documentIndex !== null) {
+            $out['document_index'] = $this->documentIndex;
         }
 
         return $out;

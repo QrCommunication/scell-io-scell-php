@@ -21,6 +21,9 @@ use InvalidArgumentException;
  *    quand `unit='pixel'`. Si absents : detection auto via parser PDF cote
  *    backend, fallback A4 (595 x 842).
  *  - `fontSize`, `color`, `bold` : override des valeurs au niveau du bloc.
+ *  - `documentIndex` (v2.16.0) : cible un document specifique dans un bundle
+ *    multi-PDF (`attachments[]` du payload de creation). `0` = document
+ *    principal, `1..N` = attachments dans l'ordre. Defaut `null` = principal.
  *
  * @example
  * ```php
@@ -29,6 +32,9 @@ use InvalidArgumentException;
  * $p1 = new InitialsPosition(page: 1, x: 90, y: 90);
  * $p2 = new InitialsPosition(page: 2, x: 88, y: 92, fontSize: 12);
  * $p3 = new InitialsPosition(page: 3, x: 85, y: 90, color: '#aa0000');
+ *
+ * // Cible le 2e document du bundle (attachments[0])
+ * $p4 = new InitialsPosition(page: 1, x: 90, y: 90, documentIndex: 1);
  * ```
  */
 readonly class InitialsPosition
@@ -43,6 +49,7 @@ readonly class InitialsPosition
         public ?int $fontSize = null,
         public ?string $color = null,
         public ?bool $bold = null,
+        public ?int $documentIndex = null,
     ) {
         if ($page < 1 || $page > 500) {
             throw new InvalidArgumentException(
@@ -64,6 +71,11 @@ readonly class InitialsPosition
                 "Invalid color '{$color}'. Must be a hex code (#RRGGBB)."
             );
         }
+        if ($documentIndex !== null && ($documentIndex < 0 || $documentIndex > 10)) {
+            throw new InvalidArgumentException(
+                "Invalid documentIndex {$documentIndex}. Must be between 0 and 10 (0 = main document, 1..N = attachments)."
+            );
+        }
     }
 
     /**
@@ -81,6 +93,7 @@ readonly class InitialsPosition
             fontSize: isset($data['font_size']) ? (int) $data['font_size'] : null,
             color: $data['color'] ?? null,
             bold: isset($data['bold']) ? (bool) $data['bold'] : null,
+            documentIndex: isset($data['document_index']) ? (int) $data['document_index'] : null,
         );
     }
 
@@ -111,6 +124,9 @@ readonly class InitialsPosition
         }
         if ($this->bold !== null) {
             $out['bold'] = $this->bold;
+        }
+        if ($this->documentIndex !== null) {
+            $out['document_index'] = $this->documentIndex;
         }
 
         return $out;
