@@ -617,6 +617,64 @@ $pdf = $api->creditNotes()->download($creditNoteId);
 file_put_contents('avoir.pdf', $pdf);
 ```
 
+### Resolution TVA cross-border (v2.18.0)
+
+Avant d'emettre une facture vers un client etranger, interrogez le moteur
+de regles TVA pour determiner la categorie applicable (autoliquidation,
+hors-champ, taux reduit, etc.) :
+
+```php
+use Scell\Sdk\Builders\InvoiceLineBuilder;
+use Scell\Sdk\DTOs\Vat\BuyerContext;
+use Scell\Sdk\DTOs\LineVatContext;
+use Scell\Sdk\Enums\VatCategory;
+
+// --- Mode 1 : buyer enregistre dans le registre ---
+$resolution = $api->buyers()->vatContext(
+    buyerOrInput: '019cb416-b6db-730c-b3a5-f8b7a4512eb1',
+    line: ['category' => 'STANDARD'],
+);
+echo $resolution->rate;             // 0.0  (autoliquidation)
+echo $resolution->category->value;  // 'REVERSE_CHARGE'
+echo $resolution->en16931Code;      // 'AE'
+echo $resolution->justification;    // "TVA non applicable, art. 259-1 du CGI"
+
+// --- Mode 2 : buyer inline ---
+$resolution = $api->buyers()->vatContext(
+    buyerOrInput: new BuyerContext(
+        country: 'DE',
+        vatNumber: 'DE123456789',
+        vatNumberValid: true,
+    ),
+    line: new LineVatContext(category: VatCategory::Standard),
+);
+
+// --- Override art. 259 A CGI (lieu de prestation force) ---
+$resolution = $api->buyers()->vatContext(
+    buyerOrInput: ['country' => 'DE', 'vat_number' => 'DE123456789'],
+    line: ['category' => 'STANDARD', 'place_of_supply' => 'FR'],
+);
+echo $resolution->category->value;  // 'STANDARD' — 20 % TVA FR appliquee
+
+// --- Builder de ligne avec categorie derivee ---
+$line = (new InvoiceLineBuilder())
+    ->withDescription('Logiciel SaaS')
+    ->withQuantity(1)
+    ->withUnitPrice(500.00)
+    ->withCategory($resolution->category)      // derive le tax_rate + metadata
+    ->withPlaceOfSupply('FR')                  // art. 259 A CGI
+    ->build();
+// $line['tax_rate']                          = 0.0
+// $line['metadata']['category']              = 'REVERSE_CHARGE'
+// $line['metadata']['exemption_reason']      = 'reverse_charge'
+// $line['metadata']['place_of_supply']       = 'FR'
+```
+
+**VatCategory helpers** (enum `Scell\Sdk\Enums\VatCategory`) :
+- `defaultRate()` — taux FR par defaut (ex: 20.0 pour STANDARD, 0.0 pour REVERSE_CHARGE)
+- `en16931Code()` — code XML EN16931 (S / Z / E / AE / O)
+- `exemptionReason()` — raison si taux nul, null sinon
+
 ## Integration Laravel
 
 ### Installation

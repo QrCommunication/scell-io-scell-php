@@ -2,6 +2,67 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.18.0] - 2026-05-26
+
+### Added
+
+- **`BuyerResource::vatContext()`** — Resout le contexte TVA cross-border d'une ligne
+  de facture. Accepte un `buyer_id` enregistre ou un buyer inline (pays, statut B2B/B2C,
+  numero TVA). Retourne un `VatResolution` avec le taux applicable, la categorie, le
+  code EN16931 pour Factur-X/UBL et la justification textuelle.
+
+  ```php
+  // Mode buyer_id
+  $r = $client->buyers()->vatContext('019cb416-...', ['category' => 'STANDARD']);
+  echo $r->rate;                // 20.0
+  echo $r->category->value;     // 'STANDARD'
+
+  // Mode buyer inline (reverse charge EU B2B)
+  $r = $client->buyers()->vatContext(
+      ['country' => 'DE', 'vat_number' => 'DE123456789'],
+      ['category' => 'STANDARD'],
+  );
+  echo $r->category->value;     // 'REVERSE_CHARGE'
+  echo $r->en16931Code;         // 'AE'
+  ```
+
+- **`VatResolution` DTO** (`Scell\Sdk\DTOs\VatResolution`) — Resultat de la resolution TVA.
+  Proprietes : `rate`, `category` (VatCategory), `en16931Code`, `exemptionReason`,
+  `justification`, `isAutoResolved`, `rule`. Methodes : `fromArray()`, `toArray()`.
+
+- **`LineVatContext` DTO** (`Scell\Sdk\DTOs\LineVatContext`) — Contexte d'une ligne pour
+  la resolution. Proprietes : `category` (VatCategory|null), `placeOfSupply`, `serviceNature`.
+  Utile pour les overrides art. 259 A CGI (lieu de prestation force).
+
+- **`Vat\BuyerContext` DTO** (`Scell\Sdk\DTOs\Vat\BuyerContext`) — Caracteristiques fiscales
+  d'un acheteur inline (distinct du DTO `Buyer` complet). Proprietes : `country`, `isIndividual`,
+  `vatNumber`, `vatNumberValid`. Ne contient que les champs necessaires a la resolution TVA.
+
+- **`VatCategory` enum** (`Scell\Sdk\Enums\VatCategory`) — 8 cases correspondant aux regimes
+  TVA du moteur de regles Scell.io : `Standard` (20 %), `Intermediate` (10 %), `Reduced` (5,5 %),
+  `SuperReduced` (2,1 %), `ZeroRated`, `Exempt`, `ReverseCharge`, `OutOfScope`. Helpers :
+  `defaultRate()`, `en16931Code()`, `exemptionReason()`, `label()`.
+
+- **`InvoiceLineBuilder`** (`Scell\Sdk\Builders\InvoiceLineBuilder`) — Builder fluent pour
+  construire le payload d'une ligne de facture avec gestion de la TVA.
+  Methodes : `withCategory(VatCategory)` (derive tax_rate + metadata.category + metadata.exemption_reason),
+  `withPlaceOfSupply(string)`, `withServiceNature(string)`, `withDescription()`, `withQuantity()`,
+  `withUnitPrice()`, `withTaxRate()`, `withMetadata()`, `build()`.
+
+  ```php
+  $line = (new InvoiceLineBuilder())
+      ->withDescription('Logiciel SaaS EU')
+      ->withQuantity(1)
+      ->withUnitPrice(500.00)
+      ->withCategory(VatCategory::ReverseCharge)
+      ->withPlaceOfSupply('FR')  // art. 259 A CGI
+      ->build();
+  // $line['tax_rate'] = 0.0
+  // $line['metadata']['category'] = 'REVERSE_CHARGE'
+  // $line['metadata']['exemption_reason'] = 'reverse_charge'
+  // $line['metadata']['place_of_supply'] = 'FR'
+  ```
+
 ## [2.17.0] - 2026-05-26
 
 ### Security

@@ -6,7 +6,11 @@ namespace Scell\Sdk\Resources;
 
 use Scell\Sdk\DTOs\Address;
 use Scell\Sdk\DTOs\Buyer;
+use Scell\Sdk\DTOs\LineVatContext;
 use Scell\Sdk\DTOs\PaginatedResult;
+use Scell\Sdk\DTOs\Vat\BuyerContext;
+use Scell\Sdk\DTOs\VatResolution;
+use Scell\Sdk\Enums\VatCategory;
 use Scell\Sdk\Http\HttpClient;
 
 /**
@@ -98,6 +102,92 @@ class BuyerResource
     public function delete(string $id): void
     {
         $this->http->delete("buyers/{$id}");
+    }
+
+    /**
+     * Resout le contexte TVA cross-border d'une ligne de facture.
+     *
+     * Le moteur de regles backend determine la categorie TVA applicable
+     * (STANDARD, REVERSE_CHARGE, OUT_OF_SCOPE, etc.) en fonction du pays
+     * acheteur, de son statut B2B/B2C, de la validite de son numero TVA
+     * et des eventuels overrides de lieu de prestation.
+     *
+     * Deux modes d'appel :
+     *
+     * **Mode 1 — buyer_id enregistre (string UUID)**
+     * ```php
+     * $resolution = $client->buyers()->vatContext(
+     *     buyerOrInput: '019cb416-b6db-730c-b3a5-f8b7a4512eb1',
+     *     line: ['category' => 'STANDARD'],
+     * );
+     * ```
+     *
+     * **Mode 2 — buyer inline (array ou BuyerContext)**
+     * ```php
+     * $resolution = $client->buyers()->vatContext(
+     *     buyerOrInput: ['country' => 'DE', 'vat_number' => 'DE123456789'],
+     *     line: ['category' => 'STANDARD', 'place_of_supply' => 'FR'],
+     * );
+     * // ou avec DTO
+     * $resolution = $client->buyers()->vatContext(
+     *     buyerOrInput: new BuyerContext(country: 'DE', vatNumber: 'DE123456789'),
+     *     line: new LineVatContext(category: VatCategory::Standard),
+     * );
+     * ```
+     *
+     * @param string|array<string, mixed>|BuyerContext $buyerOrInput
+     *   UUID du buyer registre (string) OU tableau/DTO buyer inline.
+     * @param array<string, mixed>|LineVatContext|null $line
+     *   Contexte de la ligne. Defaut : STANDARD si null.
+     *
+     * @return VatResolution Resolution avec taux, categorie, code EN16931 et justification.
+     */
+    public function vatContext(
+        string|array|BuyerContext $buyerOrInput,
+        array|LineVatContext|null $line = null,
+    ): VatResolution {
+        $payload = $this->buildVatContextPayload($buyerOrInput, $line);
+        $response = $this->http->post('tenant/buyers/vat-context', $payload);
+        return VatResolution::fromArray($response['resolution']);
+    }
+
+    /**
+     * @param string|array<string, mixed>|BuyerContext $buyerOrInput
+     * @param array<string, mixed>|LineVatContext|null $line
+     * @return array<string, mixed>
+     */
+    private function buildVatContextPayload(
+        string|array|BuyerContext $buyerOrInput,
+        array|LineVatContext|null $line,
+    ): array {
+        $payload = [];
+
+        // --- buyer ---
+        if (is_string($buyerOrInput)) {
+            $payload['buyer_id'] = $buyerOrInput;
+        } elseif ($buyerOrInput instanceof BuyerContext) {
+            $payload['buyer'] = $buyerOrInput->toArray();
+        } else {
+            $payload['buyer'] = $buyerOrInput;
+        }
+
+        // --- line ---
+        if ($line === null) {
+            $payload['line'] = ['category' => VatCategory::Standard->value];
+        } elseif ($line instanceof LineVatContext) {
+            $payload['line'] = $line->toArray();
+            // Garantir la presence de category si omise dans le DTO
+            if (!isset($payload['line']['category'])) {
+                $payload['line']['category'] = VatCategory::Standard->value;
+            }
+        } else {
+            $payload['line'] = $line;
+            if (!isset($payload['line']['category'])) {
+                $payload['line']['category'] = VatCategory::Standard->value;
+            }
+        }
+
+        return $payload;
     }
 
     /**
