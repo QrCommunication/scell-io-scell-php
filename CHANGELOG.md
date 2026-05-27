@@ -2,6 +2,87 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.21.0] - 2026-05-27
+
+### Added
+
+- **Cartographie exhaustive des enums backend Scell.io.** Ajout de 16 enums
+  manquants pour aligner le SDK PHP sur l'integralite des `BackedEnum` PHP
+  + check constraints PostgreSQL du backend. Tous suivent le meme pattern
+  que les enums existants (PHP 8.1+, `declare(strict_types=1)`, namespace
+  `Scell\Sdk\Enums`, helpers metier specifiques).
+
+  **Enums Invoice/Quote (alignes sur les BackedEnum backend) :**
+  - `InvoiceTemplateKind` — `invoice` / `quote` / `both`. Helper `matches()`.
+  - `InvoiceType` — `standard` / `deposit` / `balance`. Helpers
+    `facturXTypeCode()`, `isDepositOrBalance()`, `omitLatePaymentMentions()`.
+  - `PaymentScheduleLineAmountType` — `percent` / `amount`. Helper
+    `computeTtc()` qui arrondit half-up a 2 decimales.
+  - `PaymentScheduleLineStatus` — `pending` / `invoiced` / `cancelled`.
+    Helpers `canInvoice()`, `canCancel()`, `isTerminal()`.
+  - `QuoteAuditAction` — 21 cases couvrant l'audit log SHA-256 append-only
+    des devis (created, sent, viewed, signed, accepted, refused, expired,
+    converted, deposit_generated_from_schedule, etc.). Helpers
+    `isMutation()`, `isStateTransition()`, `isModification()`.
+  - `QuoteStatus` — `draft` / `sent` / `viewed` / `accepted` / `refused` /
+    `expired` / `converted` / `cancelled`. Helpers `canEdit()`,
+    `canConvert()`, `canCancel()`, `canDelete()`, `isTerminal()`.
+
+  **Enums check constraint DB :**
+  - `CreditNoteStatus` — `draft` / `sent`. Helper `canEdit()`.
+  - `CreditNoteType` — `partial` / `total`. Helper `isTotal()`.
+  - `SignatureArchiveStatus` — `pending` / `archived` / `glacier` / `error`
+    (lifecycle S3 + Object Lock COMPLIANCE 11 ans). Helper `isArchived()`.
+  - `InvoiceArchiveStatus` — `pending` / `archived` / `glacier` / `error`
+    (lifecycle S3 + Object Lock COMPLIANCE 10 ans fiscaux). Helper
+    `isArchived()`.
+  - `TenantKybStatus` — `pending` / `documents_submitted` / `under_review` /
+    `verified` / `rejected`. Helpers `canIssueInvoices()`, `isFinal()`.
+  - `CompanyStatus` — `pending_kyc` / `active` / `suspended`. Helper
+    `canIssueInvoices()`.
+  - `ApiKeyStatus` — `active` / `revoked`. Helper `isUsable()`.
+  - `TenantInvoiceStatus` — `draft` / `sent` / `paid` / `overdue` /
+    `cancelled` (factures Scell.io vers les tenants, distinct de
+    `InvoiceStatus`). Helpers `isPayable()`, `isFinal()`.
+  - `TenantTransactionType` — `debit` / `credit`. Helper `sign()` (+1 / -1).
+  - `OnboardingSessionStatus` — `initiated` / `siret_verified` /
+    `vat_verified` / `documents_pending` / `documents_submitted` /
+    `under_review` / `completed` / `failed` / `expired`. Distinct de
+    `OnboardingStatus` (qui suit le SubTenant cote backend). Helpers
+    `isFinal()`, `isActive()`.
+
+  ```php
+  use Scell\Sdk\Enums\InvoiceType;
+  use Scell\Sdk\Enums\QuoteStatus;
+  use Scell\Sdk\Enums\TenantKybStatus;
+
+  // Type-safe consumption
+  if ($invoice->type === InvoiceType::Deposit) {
+      // Acompte : TVA exigible mais pas de mentions L441-10
+  }
+
+  // Lifecycle helpers
+  if ($quote->status->canConvert()) {
+      $client->quotes->convertToBalance($quote->id);
+  }
+
+  // Backend constraint enforcement
+  if (! $tenant->kyb_status->canIssueInvoices()) {
+      throw new TenantNotReadyException();
+  }
+  ```
+
+### Notes
+
+- Aucun breaking change. Les DTOs continuent d'exposer les valeurs en
+  `string` quand le SDK ne typait pas encore en enum — les helpers
+  `Enum::from()` / `::tryFrom()` permettent au consommateur de basculer
+  progressivement vers un typage strict.
+- Couvre tous les check constraints PostgreSQL du backend
+  (`*_status_check`, `*_type_check`) ainsi que les `BackedEnum` PHP des
+  domaines Invoice, Quote, Tenant, Company, ApiKey, Onboarding,
+  Archiving.
+
 ## [2.20.0] - 2026-05-27
 
 ### Added
