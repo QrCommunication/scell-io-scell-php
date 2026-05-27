@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.19.0] - 2026-05-27
+
+### Added
+
+- **`InvoiceBuilder::parentQuoteId(string $id)`** sur les factures standard —
+  Le builder fluent acceptait deja la methode mais le payload final n'incluait
+  pas le champ `parent_quote_id` sur les factures standard. Le backend Scell.io
+  expose desormais ce champ sur `POST /api/v1/invoices` pour creer une facture
+  standard reliee a un devis existant (au-dela des endpoints dedies acompte/solde
+  `POST /quotes/{id}/convert-to-deposit` et `convert-to-balance` qui restent la
+  voie nominale pour ces deux types).
+
+  ```php
+  $invoice = $client->invoices->builder()
+      ->outgoing()
+      ->facturX()
+      ->seller($sellerSiret, 'Acme', $sellerAddress)
+      ->buyer($buyerSiret, 'Client', $buyerAddress)
+      ->addLine('Prestation conseil', 1.0, 5000.00, 20.0)
+      ->parentQuoteId('019d1234-5678-7000-8000-abcdef012345')
+      ->create();
+
+  // $invoice->parentQuoteId === '019d1234-5678-7000-8000-abcdef012345'
+  ```
+
+  Restrictions backend (le SDK ne les reproduit pas — il delegue les erreurs) :
+  - `parent_quote_id` n'est accepte que si `invoice_type === 'standard'` (ou absent).
+    Pour `deposit`/`balance`, passer par les endpoints dedies.
+  - Anti-IDOR : le backend retourne **404** si le devis n'appartient pas au tenant
+    courant, **422** si `invoice_type` est invalide.
+
+### Fixed
+
+- **`InvoiceResource::normalizeCreatePayload()`** propage desormais le champ
+  `parent_quote_id` vers l'API. Avant 2.19.0, le builder set
+  `parentQuoteId()` etait silencieusement drop a la serialisation finale (le
+  champ n'apparaissait pas dans le body HTTP POST).
+
 ## [2.18.0] - 2026-05-26
 
 ### Added

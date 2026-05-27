@@ -439,6 +439,16 @@ class InvoiceResource
             $payload['deposit_reference_text'] = $data['deposit_reference_text'];
         }
 
+        // Lien soft vers le devis source (SDK 2.19.0).
+        // Permet de creer une facture standard reliee a un devis existant.
+        // Anti-IDOR cote backend : 404 si le devis n'appartient pas au tenant
+        // courant. 422 si invoice_type != 'standard' (les acomptes/soldes
+        // passent par les endpoints dedies POST /quotes/{id}/convert-to-deposit
+        // et convert-to-balance qui set parent_quote_id automatiquement).
+        if (isset($data['parent_quote_id'])) {
+            $payload['parent_quote_id'] = $data['parent_quote_id'];
+        }
+
         return $payload;
     }
 }
@@ -619,8 +629,16 @@ class InvoiceBuilder
     /**
      * Lie cette facture au devis dont elle est issue.
      *
-     * Utilise lors de la conversion devis → facture via le workflow
-     * QuoteResource::convertToDeposit() ou convertToBalance().
+     * Deux usages :
+     *  1. Conversion devis → acompte/solde via QuoteResource::convertToDeposit()
+     *     ou convertToBalance() : `parent_quote_id` est set automatiquement par
+     *     ces endpoints dedies.
+     *  2. Facture standard ($invoiceType absent ou 'standard') referencant un
+     *     devis source : appeler parentQuoteId() explicitement avant create().
+     *     Anti-IDOR : le backend retourne 404 si le devis n'appartient pas au
+     *     tenant courant, 422 si invoice_type != 'standard'.
+     *
+     * Disponible explicitement sur les factures standard depuis SDK 2.19.0.
      */
     public function parentQuoteId(string $id): self
     {
