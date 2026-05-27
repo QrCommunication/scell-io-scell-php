@@ -2,6 +2,80 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.20.0] - 2026-05-27
+
+### Added
+
+- **Statuts Invoice — alignement complet sur `invoices_status_check` backend.**
+  Le SDK expose desormais toutes les valeurs du check constraint PostgreSQL
+  `invoices_status_check` de l'API Scell.io. Nouveaux cases sur
+  `Scell\Sdk\Enums\InvoiceStatus` :
+  - `Refunded` (`refunded`) — facture totalement avoiree (avoirs >= total TTC)
+  - `PartiallyRefunded` (`partially_refunded`) — au moins un avoir, somme < TTC
+  - `Validating` (`validating`) — validation en cours (file de jobs)
+  - `Transmitting` (`transmitting`) — transmission en cours
+  - `Disputed` (`disputed`) — contestee (litige ouvert)
+  - `Received` (`received`) — recue cote acheteur (entrante)
+  - `Completed` (`completed`) — cycle de vie cloture
+
+  Le backend pose `refunded` / `partially_refunded` automatiquement via
+  `CreditNoteObserver` quand un avoir atteint le statut
+  `validated/sent/transmitted/accepted` et que la somme cumulee atteint (ou
+  reste inferieure a) le total TTC de la facture mere.
+
+  ```php
+  $invoice = $client->invoices->get('019d...');
+
+  if ($invoice->status === InvoiceStatus::Refunded) {
+      // Facture integralement remboursee
+  }
+
+  // Helper enum
+  $invoice->status->isRefunded(); // true si Refunded ou PartiallyRefunded
+  $invoice->status->isFinal();    // true pour Refunded (mais pas PartiallyRefunded)
+  ```
+
+- **Enum `RefundStatus`** — projection simplifiee du statut de remboursement
+  retournee par l'API dans le champ `refund_status` (`none|partial|full`).
+  Plus simple a consommer dans une UI qu'un check sur `InvoiceStatus`.
+
+  ```php
+  use Scell\Sdk\Enums\RefundStatus;
+
+  echo $invoice->refundStatus->label(); // "Partiellement remboursee"
+  $invoice->refundStatus->hasRefund();  // true si Partial ou Full
+  ```
+
+- **`Invoice::$refundStatus` et `Invoice::$totalRefunded`** — nouveaux champs
+  en lecture sur le DTO, mappes depuis les champs API `refund_status` et
+  `total_refunded` exposes par `GET /api/v1/invoices` et
+  `GET /api/v1/invoices/{id}`. Defaut `RefundStatus::None` / `0.0` quand
+  l'API ne retourne pas les champs (retrocompat).
+
+- **`Invoice::isRefunded()`, `isPartiallyRefunded()`, `isFullyRefunded()`** —
+  helpers DTO qui combinent les deux sources de verite (`refundStatus` projete
+  par le backend + `status` Invoice). Preferer ces helpers a `hasCreditNotes()`
+  (qui compte les objets credit_notes, drafts inclus) et `isFullyCredited()`
+  (qui compare un float `creditedAmount` au TTC — sensible aux arrondis).
+
+  ```php
+  $invoice->isRefunded();          // true si partial OU full
+  $invoice->isPartiallyRefunded(); // true uniquement si partial
+  $invoice->isFullyRefunded();     // true uniquement si full
+  ```
+
+### Notes
+
+- Aucun breaking change. Les anciens consommateurs continuent de fonctionner :
+  le mapping `fromArray()` est defensif (`RefundStatus::tryFrom` + fallback
+  `None`), et les nouveaux champs ont des defauts safe.
+- Les statuts ajoutes sur l'enum n'invalident aucun code existant (PHP
+  permet les match exhaustifs sans `default` quand le compilateur peut
+  inferer la couverture — verifier vos `match ($invoice->status)` si vous
+  en utilisez ailleurs que via le SDK).
+- `InvoiceStatus::Processing` reste disponible (legacy backend) mais est
+  marquee `@deprecated` — preferer `Validating` pour les nouveaux flux.
+
 ## [2.19.0] - 2026-05-27
 
 ### Added

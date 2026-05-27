@@ -9,6 +9,7 @@ use Scell\Sdk\Enums\Direction;
 use Scell\Sdk\Enums\Environment;
 use Scell\Sdk\Enums\InvoiceStatus;
 use Scell\Sdk\Enums\OutputFormat;
+use Scell\Sdk\Enums\RefundStatus;
 
 /**
  * Represente une facture electronique.
@@ -146,6 +147,22 @@ readonly class Invoice
          * }|null
          */
         public ?array $depositGroupProgress = null,
+        /**
+         * Statut de remboursement derive du statut Invoice par le backend.
+         * Toujours present sur les reponses API (`refund_status` field).
+         * Par defaut `None` si le champ est absent (compat. anciennes API).
+         * Disponible depuis SDK 2.20.0 (API 2026-05-27).
+         */
+        public RefundStatus $refundStatus = RefundStatus::None,
+        /**
+         * Somme des avoirs valides rattaches a la facture (en EUR).
+         * Calcule par le backend via SUM(credit_notes.total) sur les statuts
+         * validated/completed/sent/transmitted/accepted. 0.0 si aucun avoir.
+         * Equivalent fonctionnel du champ legacy `creditedAmount`, mais aligne
+         * sur le nouveau contrat backend (`total_refunded`).
+         * Disponible depuis SDK 2.20.0.
+         */
+        public float $totalRefunded = 0.0,
     ) {}
 
     /**
@@ -217,6 +234,12 @@ readonly class Invoice
             depositGroupProgress: isset($data['deposit_group_progress']) && is_array($data['deposit_group_progress'])
                 ? $data['deposit_group_progress']
                 : null,
+            refundStatus: isset($data['refund_status']) && is_string($data['refund_status'])
+                ? (RefundStatus::tryFrom($data['refund_status']) ?? RefundStatus::None)
+                : RefundStatus::None,
+            totalRefunded: isset($data['total_refunded'])
+                ? (float) $data['total_refunded']
+                : 0.0,
         );
     }
 
@@ -293,5 +316,43 @@ readonly class Invoice
     public function isIncoming(): bool
     {
         return $this->direction === Direction::Incoming;
+    }
+
+    /**
+     * Indique si la facture a au moins un avoir (partiel ou total).
+     *
+     * Equivalent fonctionnel de `$this->refundStatus->hasRefund()`. Disponible
+     * depuis SDK 2.20.0 — preferer cette methode a `hasCreditNotes()` qui
+     * regarde le compteur d'objets credit_notes (incluant les drafts) plutot
+     * que le statut metier propage par CreditNoteObserver.
+     */
+    public function isRefunded(): bool
+    {
+        return $this->refundStatus->hasRefund() || $this->status->isRefunded();
+    }
+
+    /**
+     * Indique si la facture est partiellement avoiree.
+     *
+     * Disponible depuis SDK 2.20.0.
+     */
+    public function isPartiallyRefunded(): bool
+    {
+        return $this->refundStatus === RefundStatus::Partial
+            || $this->status === InvoiceStatus::PartiallyRefunded;
+    }
+
+    /**
+     * Indique si la facture est totalement avoiree.
+     *
+     * Disponible depuis SDK 2.20.0. Preferer cette methode a
+     * `isFullyCredited()` (basee sur la somme float `creditedAmount`) — le
+     * backend pose le statut de facon idempotente via observer, ce qui evite
+     * les ecarts d'arrondi.
+     */
+    public function isFullyRefunded(): bool
+    {
+        return $this->refundStatus === RefundStatus::Full
+            || $this->status === InvoiceStatus::Refunded;
     }
 }
