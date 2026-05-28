@@ -23,16 +23,6 @@ enum InvoiceStatus: string
     /** Brouillon - facture creee mais non traitee */
     case Draft = 'draft';
 
-    /**
-     * En cours de traitement (alias historique de Validating).
-     *
-     * @deprecated Le backend Scell.io expose `validating`. `Processing` reste
-     *             disponible pour retrocompatibilite avec les anciennes
-     *             integrations qui posaient encore cette valeur. Ne plus poser
-     *             dans du nouveau code.
-     */
-    case Processing = 'processing';
-
     /** Validation en cours (file de jobs, controles Factur-X/UBL/CII) */
     case Validating = 'validating';
 
@@ -99,7 +89,6 @@ enum InvoiceStatus: string
     {
         return match ($this) {
             self::Draft => 'Brouillon',
-            self::Processing => 'En traitement',
             self::Validating => 'Validation en cours',
             self::Converting => 'Conversion en cours',
             self::Converted => 'Convertie',

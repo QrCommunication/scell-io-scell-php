@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.27.1] - 2026-05-28
+
+### Fixed
+- `InvoiceStatus` aligné sur les **16 statuts canoniques** du backend (check
+  constraint PostgreSQL `invoices_status_check`). Retrait du statut fantôme
+  `processing` (déprécié, jamais émis par l'API ; le backend expose `validating`).
+
 ## [2.27.0] - 2026-05-28
 
 ### Added
