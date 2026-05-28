@@ -7,6 +7,7 @@ namespace Scell\Sdk\Resources;
 use DateTimeInterface;
 use Scell\Sdk\DTOs\Invoice;
 use Scell\Sdk\DTOs\PaginatedResult;
+use Scell\Sdk\Enums\DisputeType;
 use Scell\Sdk\Enums\InvoiceStatus;
 use Scell\Sdk\Enums\RejectionCode;
 use Scell\Sdk\Http\HttpClient;
@@ -237,6 +238,63 @@ class TenantIncomingInvoiceResource
         }
 
         $response = $this->http->post("tenant/invoices/incoming/{$invoiceId}/reject", $payload);
+
+        return Invoice::fromArray($response['data']);
+    }
+
+    /**
+     * Conteste une facture entrante (litige ouvert).
+     *
+     * Un dispute marque la facture comme contestee — le fournisseur doit
+     * y repondre. C'est distinct d'un `reject()` : reject = refus definitif,
+     * dispute = demande de revision (mauvais montant, prestation non rendue,
+     * doublon, etc.).
+     *
+     * @param string $invoiceId UUID de la facture entrante
+     * @param string $reason Motif de la contestation (obligatoire, max 500 chars)
+     * @param DisputeType|string|null $disputeType Type de litige :
+     *   `DisputeType::AmountDispute` (montant), `QualityDispute` (qualite),
+     *   `DeliveryDispute` (livraison), `Other` (autre). Cf. `DisputeType` enum.
+     * @param float|null $expectedAmount Montant attendu en EUR (optionnel, utile
+     *   surtout pour `disputeType=AmountDispute`)
+     *
+     * @return Invoice La facture mise a jour (statut `disputed`)
+     *
+     * @example
+     * ```php
+     * // Dispute simple
+     * $invoice = $resource->dispute('invoice-uuid', 'Montant facture incorrect');
+     *
+     * // Avec type structure et montant attendu
+     * $invoice = $resource->dispute(
+     *     'invoice-uuid',
+     *     'Facture de 1500 EUR HT pour une prestation devisee a 1200 EUR HT',
+     *     DisputeType::AmountDispute,
+     *     1200.00,
+     * );
+     * ```
+     *
+     * @since 2.24.0
+     */
+    public function dispute(
+        string $invoiceId,
+        string $reason,
+        DisputeType|string|null $disputeType = null,
+        ?float $expectedAmount = null,
+    ): Invoice {
+        $payload = ['reason' => $reason];
+
+        if ($disputeType !== null) {
+            $payload['dispute_type'] = $disputeType instanceof DisputeType
+                ? $disputeType->value
+                : $disputeType;
+        }
+
+        if ($expectedAmount !== null) {
+            $payload['expected_amount'] = $expectedAmount;
+        }
+
+        $response = $this->http->post("tenant/invoices/incoming/{$invoiceId}/dispute", $payload);
 
         return Invoice::fromArray($response['data']);
     }

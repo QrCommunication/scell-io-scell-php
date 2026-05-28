@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Scell\Sdk;
 
 use Scell\Sdk\Http\HttpClient;
+use Scell\Sdk\Resources\CreditPacksResource;
 use Scell\Sdk\Resources\OnboardingResource;
 
 /**
@@ -46,6 +47,7 @@ class ScellPublicClient
     private readonly HttpClient $http;
     private readonly Config $config;
     private ?OnboardingResource $onboarding = null;
+    private ?CreditPacksResource $creditPacks = null;
 
     /**
      * @param string $publishableKey Cle publishable (pk_live_* ou pk_test_*)
@@ -93,6 +95,19 @@ class ScellPublicClient
     public function onboarding(): OnboardingResource
     {
         return $this->onboarding ??= new OnboardingResource($this->http);
+    }
+
+    /**
+     * Resource pour les packs de credits Scell.io (publiques).
+     *
+     * Endpoint backend (`GET /api/v1/packs/public`) ne necessite aucune auth,
+     * la publishable key suffit largement et garde la coherence du flow widget.
+     *
+     * @since 2.24.0
+     */
+    public function creditPacks(): CreditPacksResource
+    {
+        return $this->creditPacks ??= new CreditPacksResource($this->http);
     }
 
     /**

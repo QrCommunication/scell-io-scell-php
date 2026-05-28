@@ -436,15 +436,18 @@ class ScellTenantClient
     }
 
     /**
-     * Recupere le solde du tenant.
+     * Recupere le solde du tenant (LEGACY).
+     *
+     * @deprecated since 2.24.0. L'endpoint `GET /api/v1/tenant/balance` legacy
+     * a ete supprime cote backend Scell.io le 2026-05-10. Preferer le nouveau
+     * flux Billing :
+     *   - `ScellApiClient::withApiKey($sk)->billing()->usage()` pour l'usage temps reel
+     *   - `ScellApiClient::withApiKey($sk)->billing()->transactions()` pour l'historique
+     *
+     * Cette methode est conservee pour la retrocompat des integrations
+     * existantes mais sera supprimee en v3.0.0.
      *
      * @return array{data: array}
-     *
-     * @example
-     * ```php
-     * $balance = $tenant->balance();
-     * echo "Solde: {$balance['data']['credits']} credits";
-     * ```
      */
     public function balance(): array
     {

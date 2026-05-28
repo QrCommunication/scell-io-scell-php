@@ -2,6 +2,202 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.24.0] - 2026-05-28
+
+### Added
+
+- **`Resources\CreditPacksResource`** — nouvelle resource publique pour
+  consulter les packs de credits prepayes Scell.io (one-shot avec bonus,
+  comme `starter` / `pro` / `business`). Endpoint backend
+  `GET /api/v1/packs/public` (no auth requise, accepte aussi `pk_*` et `sk_*`).
+  Wire-uppee sur les 3 clients existants : `ScellApiClient`,
+  `ScellPublicClient`, `ScellClient`.
+
+  ```php
+  // Liste publique (publishable key suffit)
+  $client = ScellApiClient::withPublishableKey('pk_live_xxx');
+  $packs = $client->creditPacks()->list();
+  foreach ($packs as $pack) {
+      echo "{$pack->name} : {$pack->amountEuros} EUR -> {$pack->creditsEuros} EUR";
+      if ($pack->hasBonus()) {
+          echo " (+{$pack->bonusPercent}%)";
+      }
+  }
+
+  // Recuperer un pack par slug
+  $pro = $client->creditPacks()->get('pro');
+  ```
+
+- **`DTOs\CreditPack`** — nouveau DTO mappant le payload `packs/public` :
+  `id`, `slug`, `name`, `amountEur` (cents), `amountEuros` (float),
+  `creditsEur`, `creditsEuros`, `bonusEur`, `bonusPercent`, `currency`,
+  `position`, `isRecommended`, `description`, `bonusEuros`. Helpers
+  `hasBonus()` et `bonusInEuros()` pour les calculs derives.
+
+- **`BillingResource::listPacks()`** et **`BillingResource::checkoutPack($slug)`** —
+  acces tenant authentifie aux packs et a leur achat :
+  - `listPacks()` — `GET /api/v1/tenant/billing/packs` (vue tenant, equivalent
+    fonctionnel de `creditPacks()->list()` mais avec contexte tenant)
+  - `checkoutPack($slug)` — `POST /api/v1/tenant/billing/packs/{packSlug}/checkout`.
+    En sandbox : credit direct + reponse `mode = 'sandbox_bypass'`. En production :
+    cree un Stripe PaymentIntent + reponse `mode = 'live'|'live_existing'` avec
+    `client_secret` a confirmer cote front. Idempotent en mode live.
+
+  ```php
+  $billing = $client->billing();
+
+  // Liste les packs
+  $packs = $billing->listPacks();
+
+  // Initier l'achat (le checkout devient automatiquement Factur-X + crediter
+  // la balance via le webhook payment_intent.succeeded en production)
+  $checkout = $billing->checkoutPack('pro');
+  if ($checkout['mode'] === 'sandbox_bypass') {
+      echo "Sandbox : {$checkout['credit_eur']} cents credites directement";
+  } else {
+      // mode = 'live' ou 'live_existing'
+      echo "Confirmer le PaymentIntent {$checkout['client_secret']} cote Stripe.js";
+  }
+  ```
+
+- **`FiscalResource::exportFecAll($startDate, $endDate, $format, $download)`** —
+  endpoint cross sub-tenant FEC export consolide. Couvre P0.1
+  (`GET /v1/tenant/fiscal/fec/all`, disponible depuis 2026-05-27). Le format
+  par defaut est `pipe` (norme FEC francaise CGI BOI-CF-IOR-60-40-10),
+  alternatif `tab`. Avec `download = true`, retourne le binaire ZIP brut au
+  lieu des metadata JSON.
+
+  ```php
+  // Metadata seulement (chemin serveur du ZIP genere)
+  $meta = $client->fiscal()->exportFecAll('2026-01-01', '2026-12-31');
+  echo $meta['data']['file_path'];
+
+  // Telechargement direct du ZIP
+  $zipBinary = $client->fiscal()->exportFecAll(
+      new \DateTimeImmutable('2026-01-01'),
+      new \DateTimeImmutable('2026-12-31'),
+      format: 'pipe',
+      download: true,
+  );
+  file_put_contents('fec-all-2026.zip', $zipBinary);
+  ```
+
+- **`TenantIncomingInvoiceResource::dispute()`** — contestation de facture
+  entrante (litige ouvert). Distinct de `reject()` (refus definitif).
+  Endpoint backend cible `POST /tenant/invoices/incoming/{id}/dispute`.
+  Accepte un type de litige optionnel (`DisputeType` enum) et un montant
+  attendu pour les `amount_dispute`.
+
+  ```php
+  // Dispute simple
+  $invoice = $client->incomingInvoices()->dispute(
+      'invoice-uuid',
+      'Montant facture incorrect',
+  );
+
+  // Avec type et montant attendu
+  $invoice = $client->incomingInvoices()->dispute(
+      'invoice-uuid',
+      'Facture 1500 EUR mais devis a 1200 EUR',
+      DisputeType::AmountDispute,
+      1200.00,
+  );
+  ```
+
+- **`DTOs\PaymentSchedulePreset`** — DTO typed pour les 5 presets natifs
+  d'echeancier de paiement (`full_upfront`, `deposit_50_balance_50`,
+  `deposit_30_balance_70`, `thirds_30_30_40`, `quarterly`). Helpers :
+  `lineCount()`, `isValid()` (sum = 100), `toScheduleLines()` (transforme en
+  payload pour `POST /quotes/{id}/payment-schedule`).
+
+- **`QuotePaymentScheduleResource::presetsDtos()`** — alternative typed a
+  `presets()`. Retourne `PaymentSchedulePreset[]` au lieu du tableau brut.
+  `presets()` conserve son comportement existant (tableau brut) pour la
+  retrocompat.
+
+  ```php
+  $presets = $client->quotes()->paymentSchedule()->presetsDtos();
+  foreach ($presets as $preset) {
+      echo "{$preset->key}: {$preset->label}\n";
+  }
+
+  // Appliquer le preset 'thirds_30_30_40' directement sur un devis
+  $schedule = $client->quotes()->paymentSchedule();
+  $thirds = $schedule->presetsDtos()[3];
+  $schedule->set($quoteId, $thirds->toScheduleLines());
+  ```
+
+### Deprecated
+
+- **`Resources\BalanceResource`** (classe entiere) — tous les endpoints
+  `/api/v1/balance/*` ont ete supprimes cote backend Scell.io le 2026-05-10.
+  Tout appel via cette resource provoque maintenant un **404 silencieux suivi
+  d'une `ScellException`**. La classe est conservee pour la retrocompat mais
+  sera supprimee en v3.0.0. Migration obligatoire vers `BillingResource` :
+
+  | Ancien BalanceResource                            | Nouveau BillingResource                                  |
+  |---------------------------------------------------|----------------------------------------------------------|
+  | `$client->balance()->get()`                       | `$client->billing()->usage()`                            |
+  | `$client->balance()->reload($amount)`             | `$client->billing()->topUp(['amount_eur' => $amount])`   |
+  | `$client->balance()->updateSettings([...])`       | _supprime_ — config via dashboard admin                  |
+  | `$client->balance()->transactions([...])`         | `$client->billing()->transactions([...])`                |
+  | `$client->balance()->debits()`                    | `$client->billing()->transactions(['type' => 'debit'])`  |
+  | `$client->balance()->credits()`                   | `$client->billing()->transactions(['type' => 'credit'])` |
+  | `$client->balance()->enableAutoReload()`          | _supprime_ — config via dashboard admin                  |
+  | `$client->balance()->disableAutoReload()`         | _supprime_ — config via dashboard admin                  |
+
+- **`ScellClient::balance()`** — accessor de `BalanceResource`. Idem
+  deprecation, redirige vers `ScellClient::billing()` (NB : disponible
+  uniquement sur `ScellApiClient` actuellement — l'expose sur `ScellClient`
+  Bearer Sanctum est sur la roadmap v2.25.0).
+
+- **`ScellTenantClient::balance()`** — endpoint legacy
+  `GET /api/v1/tenant/balance` egalement supprime cote backend.
+  Migration : utiliser `ScellApiClient::withApiKey($sk)->billing()->usage()` /
+  `transactions()`.
+
+### Fixed
+
+- **`HttpClient::SDK_VERSION`** mis a jour de `'2.10.0'` a `'2.24.0'` (la
+  constante etait restee figee depuis 14 versions, dont 4 majeures de
+  fonctionnalites). Le header `User-Agent` envoye a l'API porte maintenant
+  la bonne version, ce qui ameliore l'observabilite cote backend (audit
+  logs, rate-limit per-version).
+
+### Notes
+
+- **Refund support (P1.16) — non applicable cote SDK**. Le backend
+  Scell.io n'expose **pas** d'endpoint `POST /invoices/{id}/refund`. La
+  notion de "refund" est cote backend portee par deux mecaniques distinctes :
+  1. **Factures clients (Invoice)** : refund = creation d'un avoir (CreditNote)
+     via `creditNotes()->create()`. Le statut `refund_status` /
+     `total_refunded` est ensuite propage automatiquement par
+     `CreditNoteObserver` sur la facture mere. Le SDK PHP supporte deja ce
+     flow depuis 2.20.0 (champs DTO `Invoice::$refundStatus`,
+     `Invoice::$totalRefunded`, statuts `Refunded` / `PartiallyRefunded` sur
+     l'enum `InvoiceStatus`).
+  2. **Factures Scell -> tenant (TenantInvoice payees par Stripe)** : refund
+     trigger automatique via le webhook `charge.refunded` qui cree une
+     CreditNote interne et met a jour `refund_status` sur `TenantInvoice`.
+     Pas d'API publique pour declencher un refund manuellement — c'est
+     volontaire (le refund doit passer par Stripe Dashboard ou le support).
+
+  Aucune methode SDK `refund()` ne sera ajoutee tant que le backend n'expose
+  pas un endpoint dedie.
+
+- **`IncomingInvoices::dispute()` cote `TenantIncomingInvoiceResource`** —
+  la methode appelle `POST /api/v1/tenant/invoices/incoming/{id}/dispute`.
+  Ce path n'est **pas encore expose** sous `sk_*` cote backend (seul le
+  pendant Sanctum SPA `POST /api/v1/invoices/incoming/{invoice}/dispute`
+  existe — couvert par `ScellClient::invoices()->dispute()`). Pour
+  consommateurs en `sk_*`, attendre le rollout backend (prevu Q2 2026)
+  ou utiliser le client `ScellClient` (Bearer Sanctum) qui supporte deja
+  `dispute()` via `InvoiceResource::dispute()`.
+
+- **191 tests** (vs 156 avant), **920 assertions**. 35 nouveaux tests
+  unitaires + d'integration HTTP (mocks Guzzle) couvrant les 6 surfaces
+  modifiees.
+
 ## [2.21.0] - 2026-05-27
 
 ### Added

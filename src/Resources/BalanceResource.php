@@ -11,9 +11,29 @@ use Scell\Sdk\DTOs\Transaction;
 use Scell\Sdk\Http\HttpClient;
 
 /**
- * Resource pour le solde et les transactions.
+ * Resource pour le solde et les transactions (LEGACY).
  *
- * Permet de consulter le solde, recharger et voir l'historique des transactions.
+ * @deprecated since 2.24.0. Tous les endpoints `/api/v1/balance/*` ont ete
+ * supprimes cote backend Scell.io le 2026-05-10. Tout appel via cette resource
+ * provoque maintenant un 404 silencieux suivi d'une `ScellException`.
+ *
+ * **Migration obligatoire vers `BillingResource`** :
+ *
+ * | Ancien BalanceResource                            | Nouveau BillingResource                                |
+ * |---------------------------------------------------|--------------------------------------------------------|
+ * | `$client->balance()->get()`                       | `$client->billing()->usage()`                          |
+ * | `$client->balance()->reload($amount)`             | `$client->billing()->topUp(['amount_eur' => $amount])` |
+ * | `$client->balance()->updateSettings([...])`       | (supprime - configurer via dashboard admin)            |
+ * | `$client->balance()->transactions([...])`         | `$client->billing()->transactions([...])`              |
+ * | `$client->balance()->debits()` / `credits()`      | `$client->billing()->transactions(['type' => '...'])`  |
+ * | `$client->balance()->enableAutoReload()`          | (supprime - configurer via dashboard admin)            |
+ * | `$client->balance()->disableAutoReload()`         | (supprime - configurer via dashboard admin)            |
+ *
+ * Cette classe est conservee pour la retrocompat des integrations existantes
+ * mais sera **supprimee en v3.0.0**. Aucun fix ne sera applique en attendant —
+ * les appels echouent en runtime sur l'API actuelle.
+ *
+ * @see BillingResource Remplacement officiel (`$client->billing()`)
  */
 class BalanceResource
 {
@@ -23,6 +43,9 @@ class BalanceResource
 
     /**
      * Recupere le solde actuel.
+     *
+     * @deprecated since 2.24.0. Utiliser `$client->billing()->usage()` a la place.
+     * L'endpoint `GET /api/v1/balance` a ete supprime le 2026-05-10 — appelle 404.
      */
     public function get(): Balance
     {
@@ -32,6 +55,9 @@ class BalanceResource
 
     /**
      * Recharge le solde.
+     *
+     * @deprecated since 2.24.0. Utiliser `$client->billing()->topUp(['amount_eur' => $amount])`
+     * a la place. L'endpoint `POST /api/v1/balance/reload` a ete supprime le 2026-05-10 — appelle 404.
      *
      * @param float $amount Montant a recharger (10-10000 EUR)
      * @return array{message: string, transaction: array{id: string, amount: float, balance_after: float}}
@@ -45,6 +71,10 @@ class BalanceResource
 
     /**
      * Met a jour les parametres du solde.
+     *
+     * @deprecated since 2.24.0. L'endpoint `PUT /api/v1/balance/settings` a ete
+     * supprime le 2026-05-10. Les parametres d'auto-reload sont desormais
+     * configurables uniquement via le dashboard admin Scell.io.
      *
      * @param array{
      *     auto_reload_enabled?: bool,
@@ -63,6 +93,8 @@ class BalanceResource
     /**
      * Active le rechargement automatique.
      *
+     * @deprecated since 2.24.0. Voir `updateSettings()` — config via dashboard admin uniquement.
+     *
      * @param float $threshold Seuil declenchant le rechargement
      * @param float $amount Montant a recharger
      */
@@ -77,6 +109,8 @@ class BalanceResource
 
     /**
      * Desactive le rechargement automatique.
+     *
+     * @deprecated since 2.24.0. Voir `updateSettings()` — config via dashboard admin uniquement.
      */
     public function disableAutoReload(): Balance
     {
@@ -87,6 +121,10 @@ class BalanceResource
 
     /**
      * Liste les transactions.
+     *
+     * @deprecated since 2.24.0. Utiliser `$client->billing()->transactions([...])`
+     * a la place. L'endpoint `GET /api/v1/balance/transactions` a ete supprime
+     * le 2026-05-10 — appelle 404.
      *
      * @param array{
      *     type?: string,
@@ -109,6 +147,8 @@ class BalanceResource
     /**
      * Liste uniquement les debits.
      *
+     * @deprecated since 2.24.0. Utiliser `$client->billing()->transactions(['type' => 'debit'])`.
+     *
      * @return PaginatedResult<Transaction>
      */
     public function debits(int $perPage = 25): PaginatedResult
@@ -118,6 +158,8 @@ class BalanceResource
 
     /**
      * Liste uniquement les credits.
+     *
+     * @deprecated since 2.24.0. Utiliser `$client->billing()->transactions(['type' => 'credit'])`.
      *
      * @return PaginatedResult<Transaction>
      */

@@ -7,6 +7,7 @@ namespace Scell\Sdk;
 use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\BillingResource;
 use Scell\Sdk\Resources\BuyerResource;
+use Scell\Sdk\Resources\CreditPacksResource;
 use Scell\Sdk\Resources\FiscalResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\OnboardingResource;
@@ -76,6 +77,7 @@ class ScellApiClient
     private ?BuyerResource $buyers = null;
     private ?QuoteResource $quotes = null;
     private ?BrandingResource $branding = null;
+    private ?CreditPacksResource $creditPacks = null;
 
     /**
      * Cree une instance du client API.
@@ -290,6 +292,19 @@ class ScellApiClient
     public function branding(): BrandingResource
     {
         return $this->branding ??= new BrandingResource($this->http);
+    }
+
+    /**
+     * Resource pour les packs de credits Scell.io (one-shot prepaid avec bonus).
+     *
+     * Lecture publique via `GET /api/v1/packs/public`. Pour acheter un pack,
+     * utiliser `$client->billing()->checkoutPack($slug)`.
+     *
+     * @since 2.24.0
+     */
+    public function creditPacks(): CreditPacksResource
+    {
+        return $this->creditPacks ??= new CreditPacksResource($this->http);
     }
 
     /**

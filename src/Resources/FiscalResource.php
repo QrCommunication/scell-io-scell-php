@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Scell\Sdk\Resources;
 
+use DateTimeInterface;
 use Scell\Sdk\DTOs\FiscalAnchor;
 use Scell\Sdk\DTOs\FiscalAttestation;
 use Scell\Sdk\DTOs\FiscalClosingSummary;
@@ -70,6 +71,73 @@ class FiscalResource
     public function fecExport(array $params = []): array
     {
         return $this->http->get('tenant/fiscal/fec', $params);
+    }
+
+    /**
+     * Genere et retourne l'export FEC ZIP consolide couvrant TOUS les sub-tenants
+     * du tenant courant + le tenant lui-meme (cross sub-tenant export).
+     *
+     * GET `/v1/tenant/fiscal/fec/all` (P0.1 — disponible depuis 2026-05-27).
+     *
+     * En mode JSON par defaut, retourne les metadata + chemin du ZIP genere
+     * (le ZIP est materialise cote serveur, telechargeable separement). Pour
+     * forcer le telechargement direct du binaire ZIP, passer `download = true`
+     * ce qui appelle l'API avec `?download=1` et retourne le binaire brut.
+     *
+     * Le format `pipe` (defaut) suit la norme FEC francaise (CGI BOI-CF-IOR-60-40-10).
+     * Le format `tab` produit un FEC tabulaire alternatif.
+     *
+     * @param string|DateTimeInterface $startDate Date de debut de periode (YYYY-MM-DD)
+     * @param string|DateTimeInterface $endDate   Date de fin (incluse, YYYY-MM-DD)
+     * @param 'pipe'|'tab' $format Separateur FEC (defaut `pipe`)
+     * @param bool $download Si true, retourne le binaire ZIP a la place du JSON
+     *
+     * @return array<string, mixed>|string
+     *   - Array JSON `{success, message, data: {period, format, file_path}}` si `$download = false`
+     *   - String binaire (contenu du ZIP) si `$download = true`
+     *
+     * @throws \Scell\Sdk\Exceptions\ValidationException 422 si dates invalides ou period vide
+     *
+     * @example
+     * ```php
+     * // Metadata seulement (file_path serveur)
+     * $meta = $client->fiscal()->exportFecAll('2026-01-01', '2026-12-31');
+     * echo $meta['data']['file_path']; // /tmp/fec_all_2026.zip
+     *
+     * // Telechargement direct du ZIP
+     * $zipBinary = $client->fiscal()->exportFecAll(
+     *     new \DateTimeImmutable('2026-01-01'),
+     *     new \DateTimeImmutable('2026-12-31'),
+     *     format: 'pipe',
+     *     download: true,
+     * );
+     * file_put_contents('fec-all-2026.zip', $zipBinary);
+     * ```
+     *
+     * @since 2.24.0
+     */
+    public function exportFecAll(
+        string|DateTimeInterface $startDate,
+        string|DateTimeInterface $endDate,
+        string $format = 'pipe',
+        bool $download = false,
+    ): array|string {
+        $query = [
+            'start_date' => $startDate instanceof DateTimeInterface
+                ? $startDate->format('Y-m-d')
+                : $startDate,
+            'end_date' => $endDate instanceof DateTimeInterface
+                ? $endDate->format('Y-m-d')
+                : $endDate,
+            'format' => $format,
+        ];
+
+        if ($download) {
+            $query['download'] = 1;
+            return $this->http->getRaw('tenant/fiscal/fec/all', $query);
+        }
+
+        return $this->http->get('tenant/fiscal/fec/all', $query);
     }
 
     // GET tenant/fiscal/attestation/{year}

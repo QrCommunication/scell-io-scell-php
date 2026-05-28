@@ -164,6 +164,6 @@ class HttpClientAuthTest extends TestCase
     {
         // Verrouille la constante SDK_VERSION pour eviter le drift historique
         // (etait restee a '1.12.0' alors que les tags etaient a v2.2.0).
-        $this->assertSame('2.10.0', HttpClient::SDK_VERSION);
+        $this->assertSame('2.24.0', HttpClient::SDK_VERSION);
     }
 }

@@ -6,6 +6,7 @@ namespace Scell\Sdk\Resources;
 
 use Scell\Sdk\DTOs\Invoice;
 use Scell\Sdk\DTOs\PaymentScheduleLine;
+use Scell\Sdk\DTOs\PaymentSchedulePreset;
 use Scell\Sdk\DTOs\PaymentSummary;
 use Scell\Sdk\Http\HttpClient;
 
@@ -154,16 +155,42 @@ class QuotePaymentScheduleResource
     }
 
     /**
-     * Recupere les 4 presets d'echeancier disponibles.
+     * Recupere les presets d'echeancier disponibles (5 presets natifs depuis 2026-05).
      *
-     * Les presets sont des modeles preconfigures (30/70, mensuel 3x, etc.)
-     * que le tenant peut appliquer directement sur un devis.
+     * Les presets sont des modeles preconfigures (full_upfront, 30/70, 30/30/40,
+     * 50/50, quarterly 4x25%) definis cote backend en code (pas en DB), donc
+     * stables. Le tenant peut les appliquer directement sur un devis via
+     * `set($quoteId, $preset->toScheduleLines())`.
      *
-     * @return array<int, array{name: string, description: string, lines: array[]}>
+     * **Signature inchangee depuis 2.13.0** : retourne le tableau brut
+     * `[{key, label, description, lines}, ...]`. Preferer `presetsDtos()`
+     * (2.24.0) pour beneficier des DTOs typed `PaymentSchedulePreset`.
+     *
+     * @return array<int, array{key?: string, name?: string, label?: string, description: string, lines: array[]}>
      */
     public function presets(): array
     {
         $response = $this->http->get('payment-schedule-presets');
         return $response['data'] ?? $response;
+    }
+
+    /**
+     * Recupere les presets sous forme de DTOs typed (alternative type-safe a `presets()`).
+     *
+     * Pratique pour les UI tenant qui veulent un acces structure
+     * (`$preset->key`, `$preset->label`, `$preset->lines`, `$preset->toScheduleLines()`).
+     *
+     * @return PaymentSchedulePreset[] Liste des presets DTOs
+     *
+     * @since 2.24.0
+     */
+    public function presetsDtos(): array
+    {
+        $items = $this->presets();
+
+        return array_map(
+            static fn(array $data): PaymentSchedulePreset => PaymentSchedulePreset::fromArray($data),
+            $items,
+        );
     }
 }

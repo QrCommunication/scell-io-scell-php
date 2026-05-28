@@ -9,6 +9,7 @@ use Scell\Sdk\Resources\BalanceResource;
 use Scell\Sdk\Resources\BrandingResource;
 use Scell\Sdk\Resources\BuyerResource;
 use Scell\Sdk\Resources\CompanyResource;
+use Scell\Sdk\Resources\CreditPacksResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\SignatureResource;
 use Scell\Sdk\Resources\TenantCreditNoteResource;
@@ -58,6 +59,7 @@ class ScellClient
     private ?CreditNoteResource $creditNotes = null;
     private ?QuoteResource $quotes = null;
     private ?BrandingResource $branding = null;
+    private ?CreditPacksResource $creditPacks = null;
 
     /**
      * Cree une instance du client avec Bearer token.
@@ -116,7 +118,15 @@ class ScellClient
     }
 
     /**
-     * Resource pour le solde.
+     * Resource pour le solde (LEGACY).
+     *
+     * @deprecated since 2.24.0. Les endpoints `/api/v1/balance/*` ont ete
+     * supprimes cote backend Scell.io le 2026-05-10. Utiliser
+     * `$client->billing()` (BillingResource) qui expose `usage()`, `topUp()`,
+     * `transactions()`, `invoices()`. Voir la doc de `BalanceResource` pour
+     * la table de mapping migration.
+     *
+     * @see BillingResource Remplacement officiel
      */
     public function balance(): BalanceResource
     {
@@ -169,6 +179,20 @@ class ScellClient
     public function branding(): BrandingResource
     {
         return $this->branding ??= new BrandingResource($this->http);
+    }
+
+    /**
+     * Resource pour les packs de credits Scell.io (lecture publique).
+     *
+     * Endpoint backend `GET /api/v1/packs/public` ne necessite pas d'auth ;
+     * l'expose sur le dashboard permet d'afficher les paliers a vendre dans
+     * l'UI billing tenant.
+     *
+     * @since 2.24.0
+     */
+    public function creditPacks(): CreditPacksResource
+    {
+        return $this->creditPacks ??= new CreditPacksResource($this->http);
     }
 
     /**
