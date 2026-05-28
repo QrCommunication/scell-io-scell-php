@@ -380,6 +380,14 @@ class SignatureBuilder
      * specifique dans un bundle (`attachments[]`) : `0` = document principal,
      * `1..N` = attachments dans l'ordre. Defaut `null` = document principal.
      *
+     * Multi-position par signataire (v2.27.0) — `signerIndex` (0-base) affecte
+     * explicitement la position a un signataire precis (`0` = premier signataire
+     * ajoute, `1` = deuxieme, etc.). EU-SES autorise desormais **plusieurs**
+     * positions de signature pour un meme signataire : appeler
+     * `addSignaturePosition()` autant de fois que necessaire avec le meme
+     * `signerIndex` (ex: le signataire 0 signe pages 1 et 3). Defaut `null` =
+     * mapping positionnel historique (1 position par signataire dans l'ordre).
+     *
      * @param int        $page          Numero de page (1-indexe).
      * @param float      $x             Position X (percent 0-100 ou pixels).
      * @param float      $y             Position Y (percent 0-100 ou pixels).
@@ -389,6 +397,7 @@ class SignatureBuilder
      * @param int|null   $pageWidthPx   Largeur de la page en px @72dpi (override du parser auto).
      * @param int|null   $pageHeightPx  Hauteur de la page en px @72dpi (override du parser auto).
      * @param int|null   $documentIndex Cible un document du bundle (0 = principal, 1..N = attachments). 0..10.
+     * @param int|null   $signerIndex   Affecte la position a un signataire precis (0-base). >= 0.
      */
     public function addSignaturePosition(
         int $page,
@@ -400,10 +409,16 @@ class SignatureBuilder
         ?int $pageWidthPx = null,
         ?int $pageHeightPx = null,
         ?int $documentIndex = null,
+        ?int $signerIndex = null,
     ): self {
         if ($documentIndex !== null && ($documentIndex < 0 || $documentIndex > 10)) {
             throw new \InvalidArgumentException(
                 "Invalid documentIndex {$documentIndex}. Must be between 0 and 10 (0 = main document, 1..N = attachments)."
+            );
+        }
+        if ($signerIndex !== null && $signerIndex < 0) {
+            throw new \InvalidArgumentException(
+                "Invalid signerIndex {$signerIndex}. Must be a 0-based index (>= 0)."
             );
         }
         $position = [
@@ -426,6 +441,9 @@ class SignatureBuilder
         }
         if ($documentIndex !== null) {
             $position['document_index'] = $documentIndex;
+        }
+        if ($signerIndex !== null) {
+            $position['signer_index'] = $signerIndex;
         }
 
         $this->signaturePositions[] = $position;
@@ -480,8 +498,9 @@ class SignatureBuilder
      *     ->addAttachment(base64_encode(file_get_contents('cgv.pdf')), 'cgv.pdf')
      *     ->addAttachment(base64_encode(file_get_contents('annexe.pdf')), 'annexe.pdf')
      *     ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
-     *     ->addSignaturePosition(page: 5, x: 70, y: 80, documentIndex: 0) // sur contrat
-     *     ->addSignaturePosition(page: 1, x: 70, y: 80, documentIndex: 2) // sur annexe
+     *     // Le signataire 0 signe a deux endroits : page 5 du contrat ET page 1 de l'annexe.
+     *     ->addSignaturePosition(page: 5, x: 70, y: 80, documentIndex: 0, signerIndex: 0) // sur contrat
+     *     ->addSignaturePosition(page: 1, x: 70, y: 80, documentIndex: 2, signerIndex: 0) // sur annexe
      *     ->create();
      * ```
      *

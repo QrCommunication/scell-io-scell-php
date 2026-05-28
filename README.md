@@ -218,6 +218,37 @@ $signature = $api->signatures()->builder()
     ->create();
 ```
 
+#### Positions multiples par signataire (v2.27.0)
+
+Le champ optionnel `signerIndex` (0-base) affecte explicitement une position de
+signature a un signataire precis (`0` = premier signataire ajoute, `1` = deuxieme,
+etc.). EU-SES autorise desormais **plusieurs positions pour un meme signataire** :
+appelez `addSignaturePosition()` autant de fois que necessaire avec le meme
+`signerIndex`.
+
+```php
+$signature = $api->signatures()->builder()
+    ->title('Contrat bipartite multi-pages')
+    ->documentFromFile('/path/to/contract.pdf')
+    ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')   // index 0
+    ->addSmsSigner('Marie', 'Martin', '+33612345678')        // index 1
+
+    // Le signataire 0 signe sur DEUX pages (1 et 3).
+    ->addSignaturePosition(page: 1, x: 70, y: 80, signerIndex: 0)
+    ->addSignaturePosition(page: 3, x: 70, y: 80, signerIndex: 0)
+
+    // Le signataire 1 signe une seule fois (page 3).
+    ->addSignaturePosition(page: 3, x: 30, y: 80, signerIndex: 1)
+
+    ->create();
+```
+
+Notes :
+- `signerIndex` est **optionnel** et 100% retrocompatible : sans lui, le mapping
+  positionnel historique (1 position par signataire dans l'ordre) reste applique.
+- Combinable avec `documentIndex` (multi-document) : un signataire peut signer
+  sur plusieurs documents du bundle.
+
 #### Blocs personnalises (paraphe + mentions + date) — v2.12.0
 
 ```php

@@ -12,6 +12,7 @@ use Scell\Sdk\Resources\CompanyResource;
 use Scell\Sdk\Resources\CreditPacksResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\SignatureResource;
+use Scell\Sdk\Resources\SupplierResource;
 use Scell\Sdk\Resources\TenantCreditNoteResource;
 use Scell\Sdk\Resources\WebhookResource;
 use Scell\Sdk\Resources\ApiKeyResource;
@@ -52,6 +53,7 @@ class ScellClient
     private ?SignatureResource $signatures = null;
     private ?CompanyResource $companies = null;
     private ?BuyerResource $buyers = null;
+    private ?SupplierResource $suppliers = null;
     private ?BalanceResource $balance = null;
     private ?WebhookResource $webhooks = null;
     private ?TenantCreditNoteResource $tenantCreditNotes = null;
@@ -115,6 +117,19 @@ class ScellClient
     public function buyers(): BuyerResource
     {
         return $this->buyers ??= new BuyerResource($this->http);
+    }
+
+    /**
+     * Resource pour le registre des fournisseurs (suppliers).
+     *
+     * Miroir cote emetteur du registre des acheteurs : memorise l'identite
+     * et l'adresse de facturation de vos partenaires (scope tenant + sub_tenant).
+     *
+     * @since 2.26.0
+     */
+    public function suppliers(): SupplierResource
+    {
+        return $this->suppliers ??= new SupplierResource($this->http);
     }
 
     /**

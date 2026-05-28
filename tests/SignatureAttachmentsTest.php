@@ -250,6 +250,132 @@ class SignatureAttachmentsTest extends TestCase
     }
 
     /* =========================================================================
+     | signer_index on signature_positions (v2.27.0)
+     | ======================================================================= */
+
+    #[Test]
+    public function builder_serializes_signer_index_on_signature_position(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(201, ['Content-Type' => 'application/json'], json_encode($this->signatureFixture()))],
+            $captured,
+        );
+        $resource = new SignatureResource($http);
+
+        $resource->builder()
+            ->title('Multi-signer positions')
+            ->document('PDF', 'main.pdf')
+            ->addEmailSigner('Jean', 'Dupont', 'jean@example.com') // index 0
+            ->addSmsSigner('Marie', 'Martin', '+33612345678')      // index 1
+            ->addSignaturePosition(page: 1, x: 70, y: 80, signerIndex: 0)
+            ->addSignaturePosition(page: 1, x: 30, y: 80, signerIndex: 1)
+            ->addSignaturePosition(page: 1, x: 70, y: 90) // sans index (legacy)
+            ->create();
+
+        $body = $this->lastRequestBody($captured);
+        $positions = $body['signature_positions'];
+
+        $this->assertCount(3, $positions);
+        $this->assertSame(0, $positions[0]['signer_index']);
+        $this->assertSame(1, $positions[1]['signer_index']);
+        $this->assertArrayNotHasKey('signer_index', $positions[2]);
+    }
+
+    #[Test]
+    public function builder_allows_multiple_positions_for_same_signer(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(201, ['Content-Type' => 'application/json'], json_encode($this->signatureFixture()))],
+            $captured,
+        );
+        $resource = new SignatureResource($http);
+
+        // Le signataire 0 signe sur DEUX pages (1 et 3) — nouvelle capacite EU-SES.
+        $resource->builder()
+            ->title('Multi-position single signer')
+            ->document('PDF', 'main.pdf')
+            ->addEmailSigner('Jean', 'Dupont', 'jean@example.com') // index 0
+            ->addSignaturePosition(page: 1, x: 70, y: 80, signerIndex: 0)
+            ->addSignaturePosition(page: 3, x: 70, y: 80, signerIndex: 0)
+            ->create();
+
+        $body = $this->lastRequestBody($captured);
+        $positions = $body['signature_positions'];
+
+        $this->assertCount(2, $positions);
+        $this->assertSame(0, $positions[0]['signer_index']);
+        $this->assertSame(1, $positions[0]['page']);
+        $this->assertSame(0, $positions[1]['signer_index']);
+        $this->assertSame(3, $positions[1]['page']);
+    }
+
+    #[Test]
+    public function signer_index_combines_with_document_index(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(201, ['Content-Type' => 'application/json'], json_encode($this->signatureFixture()))],
+            $captured,
+        );
+        $resource = new SignatureResource($http);
+
+        $resource->builder()
+            ->title('Multi-doc multi-signer')
+            ->document('PDF', 'main.pdf')
+            ->addAttachment(base64_encode('ANNEXE'), 'annexe.pdf')
+            ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
+            ->addSignaturePosition(page: 5, x: 70, y: 80, documentIndex: 0, signerIndex: 0)
+            ->addSignaturePosition(page: 1, x: 70, y: 80, documentIndex: 1, signerIndex: 0)
+            ->create();
+
+        $body = $this->lastRequestBody($captured);
+        $positions = $body['signature_positions'];
+
+        $this->assertCount(2, $positions);
+        $this->assertSame(0, $positions[0]['document_index']);
+        $this->assertSame(0, $positions[0]['signer_index']);
+        $this->assertSame(1, $positions[1]['document_index']);
+        $this->assertSame(0, $positions[1]['signer_index']);
+    }
+
+    #[Test]
+    public function payload_omits_signer_index_when_not_set_backward_compat(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(201, ['Content-Type' => 'application/json'], json_encode($this->signatureFixture()))],
+            $captured,
+        );
+        $resource = new SignatureResource($http);
+
+        // Position sans signerIndex : mapping positionnel historique, payload v2.26 inchange.
+        $resource->builder()
+            ->title('Legacy mapping')
+            ->document('PDF', 'doc.pdf')
+            ->addEmailSigner('Jean', 'Dupont', 'jean@example.com')
+            ->addSignaturePosition(page: 1, x: 50, y: 50)
+            ->create();
+
+        $body = $this->lastRequestBody($captured);
+        $this->assertArrayNotHasKey('signer_index', $body['signature_positions'][0]);
+    }
+
+    #[Test]
+    public function addSignaturePosition_rejects_negative_signer_index(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp([], $captured);
+        $resource = new SignatureResource($http);
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Invalid signerIndex -1');
+
+        $resource->builder()->addSignaturePosition(page: 1, x: 50, y: 50, signerIndex: -1);
+    }
+
+    /* =========================================================================
      | document_index on BlockPosition (mention / date)
      | ======================================================================= */
 

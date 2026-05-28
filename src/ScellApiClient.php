@@ -14,6 +14,7 @@ use Scell\Sdk\Resources\OnboardingResource;
 use Scell\Sdk\Resources\SignatureResource;
 use Scell\Sdk\Resources\StatsResource;
 use Scell\Sdk\Resources\SubTenantResource;
+use Scell\Sdk\Resources\SupplierResource;
 use Scell\Sdk\Resources\BrandingResource;
 use Scell\Sdk\Resources\TenantCreditNoteResource;
 use Scell\Sdk\Resources\TenantDirectInvoiceResource;
@@ -75,6 +76,7 @@ class ScellApiClient
     private ?TenantIncomingInvoiceResource $incomingInvoices = null;
     private ?OnboardingResource $onboarding = null;
     private ?BuyerResource $buyers = null;
+    private ?SupplierResource $suppliers = null;
     private ?QuoteResource $quotes = null;
     private ?BrandingResource $branding = null;
     private ?CreditPacksResource $creditPacks = null;
@@ -274,6 +276,19 @@ class ScellApiClient
     public function buyers(): BuyerResource
     {
         return $this->buyers ??= new BuyerResource($this->http);
+    }
+
+    /**
+     * Resource pour le registre des fournisseurs (scope tenant + sub_tenant).
+     *
+     * Miroir cote emetteur du registre des acheteurs : memorise l'identite
+     * et l'adresse de facturation de vos partenaires fournisseurs.
+     *
+     * @since 2.26.0
+     */
+    public function suppliers(): SupplierResource
+    {
+        return $this->suppliers ??= new SupplierResource($this->http);
     }
 
     /**

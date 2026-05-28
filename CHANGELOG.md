@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.27.0] - 2026-05-28
+
+### Added
+
+- **`SignatureBuilder::addSignaturePosition()` — parametre `signerIndex`**
+  (optionnel, `int` 0-base) — affecte explicitement une position de signature
+  a un signataire precis (`0` = premier signataire ajoute, `1` = deuxieme,
+  etc.). Serialise en `signer_index` dans le payload uniquement s'il est
+  defini.
+
+- **Positions multiples par signataire** — EU-SES autorise desormais
+  **plusieurs** positions de signature pour un meme signataire. Appeler
+  `addSignaturePosition()` autant de fois que necessaire avec le meme
+  `signerIndex` (ex: le signataire 0 signe pages 1 et 3). Combinable avec
+  `documentIndex` (multi-document).
+
+### Notes
+
+- 100% retrocompatible : sans `signerIndex`, le mapping positionnel historique
+  (1 position par signataire dans l'ordre) reste applique. Le comportement
+  existant est inchange.
+
+## [2.26.0] - 2026-05-28
+
+### Added
+
+- **`Resources\SupplierResource`** — registre des fournisseurs (miroir cote
+  emetteur de `BuyerResource`). Scope strict par (tenant, sub_tenant).
+  Methodes : `list()` (filtres `q`, `is_individual`, `per_page`, `page`),
+  `get()`, `create()`, `update()` (PATCH partiel) et `delete()`.
+  Consomme les endpoints backend `GET|POST /api/v1/suppliers`,
+  `GET|PATCH|PUT|DELETE /api/v1/suppliers/{id}`.
+
+- **`DTOs\Supplier`** — DTO immutable miroir de `Buyer` cote fournisseur.
+  Champs : `id`, `tenantId`, `subTenantId`, `name`, `isIndividual`,
+  `billingAddress` (`Address`), `country`, `siret`, `vatNumber`, `legalId`,
+  `legalIdScheme`, `email`, `phone`, `metadata`, `notes`, `createdAt`,
+  `updatedAt`. **Pas** de `shippingAddress`, `billingEmail` ni de
+  resolution TVA (concepts acheteur uniquement).
+
+- **`ScellClient::suppliers()` + `ScellApiClient::suppliers()`** — exposent
+  la nouvelle resource, meme pattern lazy que `buyers()`.
+
 ## [2.25.0] - 2026-05-28
 
 ### Added
