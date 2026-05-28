@@ -2,6 +2,115 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.25.0] - 2026-05-28
+
+### Added
+
+- **`Enums\PaymentMeansCode`** — nouvelle enumeration des codes
+  UN/ECE 4461 (BT-81 EN16931 / Factur-X) supportes cote backend Scell.io.
+  11 cases couvrant les moyens de paiement les plus courants en B2B France :
+
+  | Case | Value | FR / EN |
+  |------|-------|---------|
+  | `INSTRUMENT_NOT_DEFINED` | `1` | Non specifie / Unspecified |
+  | `IN_CASH` | `10` | Especes / Cash |
+  | `CHEQUE` | `20` | Cheque / Cheque |
+  | `CREDIT_TRANSFER` | `30` | Virement / Credit transfer |
+  | `PAYMENT_TO_BANK_ACCOUNT` | `42` | Versement bancaire / Bank account transfer |
+  | `BANK_CARD` | `48` | Carte bancaire / Bank card |
+  | `DIRECT_DEBIT` | `49` | Prelevement / Direct debit |
+  | `STANDING_AGREEMENT` | `57` | Accord permanent / Standing agreement |
+  | `SEPA_CREDIT_TRANSFER` | `58` | Virement SEPA / SEPA credit transfer |
+  | `SEPA_DIRECT_DEBIT` | `59` | Prelevement SEPA / SEPA direct debit |
+  | `CLEARING_BETWEEN_PARTNERS` | `97` | Compensation / Clearing between partners |
+
+  Helpers :
+  - `->label()` — libelle francais court (UI dashboard)
+  - `->labelEn()` — English label (i18n / SDK doc)
+  - `::commonB2bFrance(): array` — ordre prioritaire pour selecteurs UI
+    (SEPA virement -> virement -> cheque -> CB -> SEPA prelevement -> especes)
+
+- **`DTOs\Invoice::$paymentMeansCode` (`?PaymentMeansCode`) +
+  `$paymentMeansText` (`?string`)** — nouveaux champs persistes apres
+  `markPaid()`, exposes par l'API sur les listes et detail invoice.
+  `tryFrom()` defensive : un code inconnu introduit cote backend ne
+  casse pas le SDK (fallback `null`).
+
+- **`DTOs\CreditNote::$paymentMeansCode` (`?PaymentMeansCode`) +
+  `$paymentMeansText` (`?string`)** — meme contrat pour les avoirs.
+
+### Changed (BREAKING)
+
+- **`InvoiceResource::markPaid(string $id, PaymentMeansCode|string $paymentMeansCode, array $optional = [])`**
+  La signature de `POST /v1/invoices/{id}/mark-paid` change :
+  `payment_means_code` est maintenant un **argument positionnel REQUIS**
+  (typesafe `PaymentMeansCode|string`). L'ancien tableau `$data` devient
+  `$optional` (clefs : `payment_means_text`, `payment_reference`,
+  `paid_at`, `note`). Toute migration depuis 2.24.x doit ajouter le code
+  comme 2e parametre :
+
+  ```php
+  // AVANT (2.24.x) - rejete par le backend 2026-05-28
+  $client->invoices()->markPaid('invoice-uuid', [
+      'payment_reference' => 'VIR-2026-001',
+  ]);
+
+  // APRES (2.25.0+)
+  $client->invoices()->markPaid(
+      'invoice-uuid',
+      PaymentMeansCode::SEPA_CREDIT_TRANSFER,
+      [
+          'payment_reference' => 'VIR-2026-001',
+          'payment_means_text' => 'Compte BNP ...4567',
+      ],
+  );
+  ```
+
+- **`TenantIncomingInvoiceResource::markPaid(string $invoiceId, PaymentMeansCode|string $paymentMeansCode, array $optional = [])`**
+  Meme refonte de signature pour `POST /v1/tenant/invoices/incoming/{id}/mark-paid`.
+  L'ancienne signature `markPaid(string $invoiceId, ?string $reference = null, array $data = [])`
+  est remplacee. Le parametre `$reference` se passe maintenant via
+  `$optional['payment_reference']` :
+
+  ```php
+  // AVANT (2.24.x)
+  $tenant->incomingInvoices()->markPaid('invoice-uuid', 'VIR-2026-001', [
+      'paid_at' => '2026-01-28',
+      'note' => 'Paiement SEPA',
+  ]);
+
+  // APRES (2.25.0+)
+  $tenant->incomingInvoices()->markPaid(
+      'invoice-uuid',
+      PaymentMeansCode::SEPA_CREDIT_TRANSFER,
+      [
+          'payment_reference' => 'VIR-2026-001',
+          'paid_at' => '2026-01-28',
+          'note' => 'Paiement SEPA',
+      ],
+  );
+  ```
+
+  Forme minimale (string brute acceptee aussi) : `markPaid($id, '58')`.
+
+### Notes
+
+- L'endpoint Sanctum SPA `POST /v1/invoices/incoming/{invoice}/mark-paid`
+  (dashboard) n'est PAS exposable via clef API `sk_*` / `pk_*` et n'est
+  donc pas couvert par le SDK PHP. Pour les operations equivalentes via
+  SDK, utiliser `TenantIncomingInvoiceResource::markPaid()` (endpoint
+  `tenant/invoices/incoming/{id}/mark-paid` accessible avec clef API).
+
+- Toute requete envoyee sans `payment_means_code` est rejetee 422 par le
+  backend (`The given data was invalid. payment_means_code: Le mode
+  d'encaissement est obligatoire`). La signature du SDK force le passage
+  du parametre a la compilation pour eliminer cette classe d'erreurs.
+
+- Le typage `PaymentMeansCode|string` permet aux integrations existantes
+  de passer une valeur string brute (`'58'`, `'30'`, etc.) sans forcer
+  la migration immediate vers l'enum, tout en gardant la verification
+  d'enum cote backend.
+
 ## [2.24.0] - 2026-05-28
 
 ### Added

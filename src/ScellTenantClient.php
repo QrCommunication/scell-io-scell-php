@@ -262,8 +262,10 @@ class ScellTenantClient
      * // Rejeter avec motif
      * $tenant->incomingInvoices()->reject('invoice-uuid', 'Montant incorrect', 'AMOUNT_ERROR');
      *
-     * // Marquer comme payee
-     * $tenant->incomingInvoices()->markPaid('invoice-uuid', 'VIR-2026-001');
+     * // Marquer comme payee (BT-81 obligatoire depuis SDK 2.25.0)
+     * $tenant->incomingInvoices()->markPaid('invoice-uuid', PaymentMeansCode::SEPA_CREDIT_TRANSFER, [
+     *     'payment_reference' => 'VIR-2026-001',
+     * ]);
      * ```
      */
     public function incomingInvoices(): TenantIncomingInvoiceResource

@@ -9,6 +9,7 @@ use Scell\Sdk\Enums\Direction;
 use Scell\Sdk\Enums\Environment;
 use Scell\Sdk\Enums\InvoiceStatus;
 use Scell\Sdk\Enums\OutputFormat;
+use Scell\Sdk\Enums\PaymentMeansCode;
 use Scell\Sdk\Enums\RefundStatus;
 
 /**
@@ -163,6 +164,22 @@ readonly class Invoice
          * Disponible depuis SDK 2.20.0.
          */
         public float $totalRefunded = 0.0,
+        /**
+         * Code UN/ECE 4461 du moyen de paiement utilise (BT-81 EN16931 /
+         * Factur-X). Renseigne apres `markPaid()` cote backend (sortantes,
+         * entrantes Sanctum et entrantes tenant). NULL pour les factures
+         * jamais marquees payees ou anterieures a SDK 2.25.0.
+         *
+         * Disponible depuis SDK 2.25.0 (API 2026-05-28).
+         */
+        public ?PaymentMeansCode $paymentMeansCode = null,
+        /**
+         * Libelle libre BT-82 associe au moyen de paiement (compte bancaire
+         * source, agence, etc.). Optionnel. Max 100 caracteres.
+         *
+         * Disponible depuis SDK 2.25.0 (API 2026-05-28).
+         */
+        public ?string $paymentMeansText = null,
     ) {}
 
     /**
@@ -240,6 +257,12 @@ readonly class Invoice
             totalRefunded: isset($data['total_refunded'])
                 ? (float) $data['total_refunded']
                 : 0.0,
+            paymentMeansCode: isset($data['payment_means_code']) && is_string($data['payment_means_code'])
+                ? PaymentMeansCode::tryFrom($data['payment_means_code'])
+                : null,
+            paymentMeansText: isset($data['payment_means_text']) && is_string($data['payment_means_text'])
+                ? $data['payment_means_text']
+                : null,
         );
     }
 

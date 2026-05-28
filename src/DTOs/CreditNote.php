@@ -6,6 +6,7 @@ namespace Scell\Sdk\DTOs;
 
 use DateTimeImmutable;
 use Scell\Sdk\Enums\Environment;
+use Scell\Sdk\Enums\PaymentMeansCode;
 
 /**
  * Represente un avoir (credit note).
@@ -63,6 +64,21 @@ readonly class CreditNote
          * BT-46/BT-47/BT-48 sont incluses dans Factur-X / UBL / CII.
          */
         public bool $buyerIsIndividual = false,
+        /**
+         * Code UN/ECE 4461 du moyen de paiement de l'avoir (BT-81 EN16931 /
+         * Factur-X). Herite typiquement de la facture associee. NULL pour les
+         * avoirs non encore liquides ou anterieurs a SDK 2.25.0.
+         *
+         * Disponible depuis SDK 2.25.0 (API 2026-05-28).
+         */
+        public ?PaymentMeansCode $paymentMeansCode = null,
+        /**
+         * Libelle libre BT-82 associe au moyen de paiement (compte bancaire
+         * source, etc.). Optionnel. Max 100 caracteres.
+         *
+         * Disponible depuis SDK 2.25.0 (API 2026-05-28).
+         */
+        public ?string $paymentMeansText = null,
     ) {}
 
     /**
@@ -101,6 +117,12 @@ readonly class CreditNote
             createdAt: isset($data['created_at']) ? new DateTimeImmutable($data['created_at']) : null,
             sentAt: isset($data['sent_at']) ? new DateTimeImmutable($data['sent_at']) : null,
             buyerIsIndividual: (bool) ($data['buyer']['is_individual'] ?? $data['buyer_is_individual'] ?? false),
+            paymentMeansCode: isset($data['payment_means_code']) && is_string($data['payment_means_code'])
+                ? PaymentMeansCode::tryFrom($data['payment_means_code'])
+                : null,
+            paymentMeansText: isset($data['payment_means_text']) && is_string($data['payment_means_text'])
+                ? $data['payment_means_text']
+                : null,
         );
     }
 

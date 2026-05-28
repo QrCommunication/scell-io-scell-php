@@ -9,6 +9,7 @@ use Scell\Sdk\DTOs\Invoice;
 use Scell\Sdk\DTOs\PaginatedResult;
 use Scell\Sdk\Enums\DisputeType;
 use Scell\Sdk\Enums\InvoiceStatus;
+use Scell\Sdk\Enums\PaymentMeansCode;
 use Scell\Sdk\Enums\RejectionCode;
 use Scell\Sdk\Http\HttpClient;
 
@@ -39,8 +40,10 @@ use Scell\Sdk\Http\HttpClient;
  * // Accepter une facture
  * $resource->accept('invoice-uuid');
  *
- * // Marquer comme payee
- * $resource->markPaid('invoice-uuid', 'VIR-2026-001');
+ * // Marquer comme payee (BT-81 obligatoire depuis SDK 2.25.0)
+ * $resource->markPaid('invoice-uuid', PaymentMeansCode::SEPA_CREDIT_TRANSFER, [
+ *     'payment_reference' => 'VIR-2026-001',
+ * ]);
  * ```
  */
 class TenantIncomingInvoiceResource
@@ -300,34 +303,64 @@ class TenantIncomingInvoiceResource
     }
 
     /**
-     * Marque une facture entrante comme payee.
+     * Marque une facture entrante comme payee
+     * (endpoint `POST /tenant/invoices/incoming/{id}/mark-paid`).
      *
      * Cette action finalise le cycle de vie de la facture dans le contexte
      * de la facturation electronique obligatoire.
      *
+     * Depuis l'API 2026-05-28, le code moyen de paiement (BT-81 Factur-X /
+     * UN/ECE 4461) est REQUIS — le backend rejette toute requete sans
+     * `payment_means_code` avec un `422 ValidationException`.
+     *
      * @param string $invoiceId UUID de la facture
-     * @param string|null $reference Reference de paiement (virement, cheque, etc.)
-     * @param array{paid_at?: string, note?: string} $data Donnees optionnelles
+     * @param PaymentMeansCode|string $paymentMeansCode Code UN/ECE 4461 (REQUIS)
+     *                                                    accepte un enum ou la valeur string brute
+     * @param array{
+     *     payment_means_text?: string|null,
+     *     payment_reference?: string|null,
+     *     paid_at?: string|null,
+     *     note?: string|null
+     * } $optional Champs optionnels supplementaires (libelle BT-82,
+     *             reference de paiement, date, note interne)
+     *
+     * @return Invoice
+     *
+     * @throws \Scell\Sdk\Exceptions\ValidationException 422 si payment_means_code invalide
      *
      * @example
      * ```php
-     * // Marquer comme payee avec reference
-     * $invoice = $resource->markPaid('invoice-uuid', 'VIR-2026-001234');
+     * use Scell\Sdk\Enums\PaymentMeansCode;
      *
-     * // Avec date et note
-     * $invoice = $resource->markPaid('invoice-uuid', 'VIR-2026-001234', [
-     *     'paid_at' => '2026-01-28',
-     *     'note' => 'Paiement par virement SEPA',
-     * ]);
+     * // Marquer comme payee par virement SEPA avec reference + libelle
+     * $invoice = $resource->markPaid(
+     *     'invoice-uuid',
+     *     PaymentMeansCode::SEPA_CREDIT_TRANSFER,
+     *     [
+     *         'payment_reference' => 'VIR-2026-001234',
+     *         'payment_means_text' => 'Compte BNP ...4567',
+     *         'paid_at' => '2026-01-28',
+     *         'note' => 'Paiement par virement SEPA',
+     *     ],
+     * );
+     *
+     * // Forme minimale (code seul, accepte aussi la string brute)
+     * $resource->markPaid('invoice-uuid', '58');
      * ```
+     *
+     * @since 2.25.0 Signature breaking : `payment_means_code` est devenu requis (BT-81 obligatoire).
+     *               L'ancienne signature `markPaid(string $invoiceId, ?string $reference = null, array $data = [])`
+     *               est remplacee — utiliser `$optional['payment_reference']` pour la reference.
      */
-    public function markPaid(string $invoiceId, ?string $reference = null, array $data = []): Invoice
-    {
-        $payload = $data;
-
-        if ($reference !== null) {
-            $payload['payment_reference'] = $reference;
-        }
+    public function markPaid(
+        string $invoiceId,
+        PaymentMeansCode|string $paymentMeansCode,
+        array $optional = []
+    ): Invoice {
+        $payload = $optional;
+        $payload['payment_means_code'] = $paymentMeansCode instanceof PaymentMeansCode
+            ? $paymentMeansCode->value
+            : $paymentMeansCode;
 
         $response = $this->http->post("tenant/invoices/incoming/{$invoiceId}/mark-paid", $payload);
 

@@ -13,6 +13,7 @@ use Scell\Sdk\Enums\Direction;
 use Scell\Sdk\Enums\DisputeType;
 use Scell\Sdk\Enums\InvoiceStatus;
 use Scell\Sdk\Enums\OutputFormat;
+use Scell\Sdk\Enums\PaymentMeansCode;
 use Scell\Sdk\Enums\RejectionCode;
 use Scell\Sdk\Http\HttpClient;
 
@@ -196,22 +197,61 @@ class InvoiceResource
     }
 
     /**
-     * Marque une facture entrante comme payee.
+     * Marque une facture comme payee (endpoint `POST /invoices/{id}/mark-paid`).
      *
      * Cette action est obligatoire dans le cycle de vie de la facturation
-     * electronique francaise pour finaliser le traitement d'une facture fournisseur.
+     * electronique francaise pour finaliser le traitement d'une facture
+     * sortante (ou entrante via direction).
+     *
+     * Depuis l'API 2026-05-28, le code moyen de paiement (BT-81 Factur-X)
+     * est REQUIS — le backend rejette toute requete sans `payment_means_code`
+     * avec un `422 ValidationException`. Le SDK ne peut pas le rendre
+     * optionnel sans casser silencieusement l'appel : la signature impose
+     * donc un second argument typesafe.
      *
      * @param string $id UUID de la facture
+     * @param PaymentMeansCode|string $paymentMeansCode Code UN/ECE 4461 (REQUIS)
+     *                                                    accepte un enum ou la valeur string brute
      * @param array{
-     *     payment_reference?: string,
-     *     paid_at?: string,
-     *     note?: string
-     * } $data Donnees de paiement optionnelles
+     *     payment_means_text?: string|null,
+     *     payment_reference?: string|null,
+     *     paid_at?: string|null,
+     *     note?: string|null
+     * } $optional Champs optionnels supplementaires
+     *
      * @return Invoice
+     *
+     * @throws \Scell\Sdk\Exceptions\ValidationException 422 si payment_means_code invalide
+     *
+     * @example
+     * ```php
+     * use Scell\Sdk\Enums\PaymentMeansCode;
+     *
+     * $invoice = $client->invoices()->markPaid(
+     *     'invoice-uuid',
+     *     PaymentMeansCode::SEPA_CREDIT_TRANSFER,
+     *     [
+     *         'payment_reference' => 'VIR-2026-001234',
+     *         'payment_means_text' => 'Compte BNP ...4567',
+     *         'paid_at' => '2026-05-28',
+     *     ],
+     * );
+     * ```
+     *
+     * @since 2.25.0 — `$paymentMeansCode` est devenu requis (BT-81 obligatoire)
      */
-    public function markPaid(string $id, array $data = []): Invoice
-    {
-        $response = $this->http->post("invoices/{$id}/mark-paid", $data);
+    public function markPaid(
+        string $id,
+        PaymentMeansCode|string $paymentMeansCode,
+        array $optional = []
+    ): Invoice {
+        $payload = $optional;
+        $payload['payment_means_code'] = $paymentMeansCode instanceof PaymentMeansCode
+            ? $paymentMeansCode->value
+            : $paymentMeansCode;
+
+        $response = $this->http->post("invoices/{$id}/mark-paid", $payload);
+
         return Invoice::fromArray($response['data']);
     }
 
