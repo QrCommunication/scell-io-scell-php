@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.28.1] - 2026-06-03
+
+### Fixed
+- Remove a redundant `!== null` guard in `InitialsBlock::fromArray()` flagged by
+  PHPStan (`isset()` already excludes null). Behaviour unchanged; fixes the
+  release CI which was failing on static analysis since v2.27.1. No API change.
+
 ## [2.28.0] - 2026-06-03
 
 Aligns the fiscal kill-switch wrappers with the **step-up** hardening shipped on

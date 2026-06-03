@@ -161,7 +161,8 @@ readonly class InitialsBlock
     {
         // Resoudre position legacy (peut etre null en mode positions[]).
         $position = null;
-        if (isset($data['position']) && $data['position'] !== null && $data['position'] !== []) {
+        // isset() already excludes null; keep only the empty-array guard.
+        if (isset($data['position']) && $data['position'] !== []) {
             $position = $data['position'] instanceof BlockPosition
                 ? $data['position']
                 : BlockPosition::fromArray((array) $data['position']);
