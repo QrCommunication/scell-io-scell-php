@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.28.0] - 2026-06-03
+
+Aligns the fiscal kill-switch wrappers with the **step-up** hardening shipped on
+the API (June 2026). The kill-switch is the emergency halt of the fiscal system;
+activating or deactivating it now requires the `fiscal:admin` scope (fail-closed),
+a `reason` of **>= 20 characters**, and — in production — an out-of-band email
+confirmation.
+
+### Changed
+
+- **`fiscal()->killSwitchDeactivate()` now takes a required `array $data`**
+  argument (`['reason' => string, 'confirmation_token' => ?string]`), mirroring
+  `killSwitchActivate()`. The previous no-argument form is removed: against the
+  current API it already failed (the server requires a `reason`).
+- `killSwitchActivate()` / `killSwitchDeactivate()` documented to accept an
+  optional `confirmation_token` (out-of-band token received by email on the
+  first production call).
+
+### Migration
+
+```php
+// Before (2.27.x)
+$scell->fiscal()->killSwitchDeactivate();
+
+// After (2.28.0)
+$scell->fiscal()->killSwitchDeactivate([
+    'reason' => 'Incident resolu, reprise de la facturation normale',
+    // 'confirmation_token' => '...', // production only, received by email on the 1st call
+]);
+```
+
 ## [2.27.1] - 2026-05-28
 
 ### Fixed

@@ -225,16 +225,36 @@ class FiscalResource
         return FiscalKillSwitchStatus::fromArray($response['data']);
     }
 
+    /**
+     * Activate the fiscal kill-switch (emergency halt).
+     *
+     * Requires the `fiscal:admin` scope (fail-closed). The `$data` array must
+     * carry a `reason` of **>= 20 characters**. In production, the first call
+     * returns 403 `OOB_CONFIRMATION_REQUIRED` and emails a `confirmation_token`
+     * to the tenant contact — re-call with that `confirmation_token` to apply.
+     *
+     * @param array{reason: string, confirmation_token?: string} $data
+     */
     // POST tenant/fiscal/kill-switch/activate
     public function killSwitchActivate(array $data): array
     {
         return $this->http->post('tenant/fiscal/kill-switch/activate', $data);
     }
 
+    /**
+     * Deactivate the fiscal kill-switch.
+     *
+     * Same step-up contract as activation: `$data['reason']` must be **>= 20
+     * characters**, and in production an out-of-band `confirmation_token` is
+     * required (first call returns 403 `OOB_CONFIRMATION_REQUIRED` and emails
+     * the token).
+     *
+     * @param array{reason: string, confirmation_token?: string} $data
+     */
     // POST tenant/fiscal/kill-switch/deactivate
-    public function killSwitchDeactivate(): array
+    public function killSwitchDeactivate(array $data): array
     {
-        return $this->http->post('tenant/fiscal/kill-switch/deactivate');
+        return $this->http->post('tenant/fiscal/kill-switch/deactivate', $data);
     }
 
     /**
