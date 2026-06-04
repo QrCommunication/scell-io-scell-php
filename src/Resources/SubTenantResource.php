@@ -231,4 +231,53 @@ class SubTenantResource
 
         return ResumeUrlResult::fromArray($response);
     }
+
+    /**
+     * Jauges de seuils micro-entrepreneur (FR) d'un sous-tenant.
+     *
+     * Retourne le CA HT cumule par categorie face aux seuils applicables
+     * (franchise TVA base/majoree + plafond du regime micro), le palier
+     * d'alerte atteint et une date projetee de franchissement. Les seuils
+     * sont des regles datees (loi 2025-1044) resolues cote serveur.
+     *
+     * Information non contractuelle (champ `disclaimer`), pas un conseil fiscal.
+     *
+     * GET /v1/tenant/sub-tenants/{id}/thresholds
+     *
+     * @return array{
+     *     data: array{
+     *         sub_tenant_id: string,
+     *         tenant_id: string,
+     *         fiscal_year: int,
+     *         generated_at: string,
+     *         gauges: array<int, array{category: string, kind: string, revenue: float, threshold: float, percent: float, level: ?string, actionable: bool, projected_crossing_date: ?string}>,
+     *         new_alerts: array<int, array<string, mixed>>
+     *     },
+     *     disclaimer: string
+     * }
+     */
+    public function getThresholds(string $id): array
+    {
+        return $this->http->get("tenant/sub-tenants/{$id}/thresholds");
+    }
+
+    /**
+     * Met a jour le profil fiscal declare d'un sous-tenant (regime, statut TVA,
+     * type d'activite, date de debut d'activite, numero de TVA).
+     *
+     * Passer `vat_status = 'liable'` bascule la facturation Scell vers la TVA
+     * (les factures suivantes portent la TVA et n'affichent plus la mention de
+     * franchise art. 293 B). Un numero de TVA devient alors requis (dans le
+     * payload ou deja present sur le sous-tenant), sinon l'API repond 422.
+     *
+     * PATCH /v1/tenant/sub-tenants/{id}/fiscal-status
+     *
+     * @param array{fiscal_regime?: string, vat_status?: string, activity_type?: string, activity_start_date?: ?string, vat_number?: ?string} $data
+     */
+    public function updateFiscalStatus(string $id, array $data): SubTenant
+    {
+        $response = $this->http->patch("tenant/sub-tenants/{$id}/fiscal-status", $data);
+
+        return SubTenant::fromArray($response['data']);
+    }
 }

@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.30.0] - 2026-06-04
+
+### Added
+- **Suivi de seuils micro-entrepreneur** (`$client->subTenants->getThresholds($id)`) :
+  jauges de seuils FR (franchise TVA base/majoree + plafond du regime micro),
+  CA HT cumule par categorie, palier d'alerte (`warning_80` … `micro_ceiling_exceeded`)
+  et date projetee de franchissement. Seuils = regles datees (loi 2025-1044).
+  Information non contractuelle (champ `disclaimer`).
+- **Statut fiscal declare** (`$client->subTenants->updateFiscalStatus($id, $data)`) :
+  MAJ regime / statut TVA / type d'activite / date de debut / numero de TVA.
+  Passer `vat_status = 'liable'` bascule la facturation vers la TVA (les factures
+  suivantes portent la TVA et n'affichent plus la mention art. 293 B) ; un numero
+  de TVA devient requis. Retourne un DTO `SubTenant`.
+- **Telechargement CSV de cloture** (`$client->fiscal->downloadClosing($closingId)`) :
+  CSV (format de marche) d'une cloture quotidienne/mensuelle/annuelle, bytes bruts,
+  scope tenant strict. `fiscal->closings(['closing_type' => ..., 'sub_tenant_id' => ...])`
+  pour filtrer.
+
 ## [2.29.1] - 2026-06-04
 
 ### Fixed

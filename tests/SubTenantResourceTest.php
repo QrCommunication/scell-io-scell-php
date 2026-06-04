@@ -135,4 +135,71 @@ class SubTenantResourceTest extends TestCase
         $this->assertCount(1, $captured);
         $this->assertSame('', $captured[0]->getUri()->getQuery());
     }
+
+    #[Test]
+    public function get_thresholds_calls_endpoint_and_returns_report(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                'data' => [
+                    'sub_tenant_id' => 'sub-uuid-42',
+                    'tenant_id' => 'tenant-1',
+                    'fiscal_year' => 2026,
+                    'generated_at' => '2026-06-04T10:00:00+00:00',
+                    'gauges' => [[
+                        'category' => 'service',
+                        'kind' => 'vat_franchise_base',
+                        'revenue' => 30000,
+                        'threshold' => 37500,
+                        'percent' => 80,
+                        'level' => 'warning_80',
+                        'actionable' => false,
+                        'projected_crossing_date' => '2026-11-01',
+                    ]],
+                    'new_alerts' => [],
+                ],
+                'disclaimer' => 'Information non contractuelle...',
+            ]))],
+            $captured,
+        );
+
+        $result = (new SubTenantResource($http))->getThresholds('sub-uuid-42');
+
+        $this->assertSame('GET', $captured[0]->getMethod());
+        $this->assertSame(
+            'https://api.scell.io/api/v1/tenant/sub-tenants/sub-uuid-42/thresholds',
+            (string) $captured[0]->getUri()->withQuery('')
+        );
+        $this->assertSame('service', $result['data']['gauges'][0]['category']);
+        $this->assertSame('warning_80', $result['data']['gauges'][0]['level']);
+        $this->assertArrayHasKey('disclaimer', $result);
+    }
+
+    #[Test]
+    public function update_fiscal_status_patches_endpoint_and_returns_sub_tenant(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                'data' => ['id' => 'sub-uuid-42', 'name' => 'AE', 'onboarding_status' => 'active', 'vat_status' => 'liable'],
+                'message' => 'Statut mis a jour : les prochaines factures porteront la TVA.',
+                'disclaimer' => 'Information non contractuelle...',
+            ]))],
+            $captured,
+        );
+
+        $result = (new SubTenantResource($http))->updateFiscalStatus('sub-uuid-42', [
+            'vat_status' => 'liable',
+            'vat_number' => 'FR12345678901',
+        ]);
+
+        $this->assertSame('PATCH', $captured[0]->getMethod());
+        $this->assertSame(
+            'https://api.scell.io/api/v1/tenant/sub-tenants/sub-uuid-42/fiscal-status',
+            (string) $captured[0]->getUri()->withQuery('')
+        );
+        $this->assertSame('liable', json_decode((string) $captured[0]->getBody(), true)['vat_status']);
+        $this->assertInstanceOf(\Scell\Sdk\DTOs\SubTenant::class, $result);
+    }
 }

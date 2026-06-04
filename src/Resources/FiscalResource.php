@@ -61,6 +61,20 @@ class FiscalResource
         return PaginatedResult::fromArray($response, fn(array $data) => FiscalClosingSummary::fromArray($data));
     }
 
+    /**
+     * Telecharge le CSV (format de marche) d'une cloture (quotidienne,
+     * mensuelle ou annuelle), y compris la chaine isolee d'un sous-tenant.
+     * Scope tenant strict : une cloture d'un autre tenant repond 404.
+     *
+     * GET /v1/tenant/fiscal/closings/{closing}/download
+     *
+     * @return string Contenu CSV brut
+     */
+    public function downloadClosing(string $closingId): string
+    {
+        return $this->http->getRaw("tenant/fiscal/closings/{$closingId}/download");
+    }
+
     // POST tenant/fiscal/closings/daily
     public function performDailyClosing(array $data = []): array
     {
