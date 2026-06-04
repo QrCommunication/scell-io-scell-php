@@ -18,6 +18,7 @@ use Scell\Sdk\Resources\WebhookResource;
 use Scell\Sdk\Resources\ApiKeyResource;
 use Scell\Sdk\Resources\CreditNoteResource;
 use Scell\Sdk\Resources\QuoteResource;
+use Scell\Sdk\Resources\ReferenceResource;
 
 /**
  * Client principal du SDK Scell.io (authentification Bearer token).
@@ -62,6 +63,7 @@ class ScellClient
     private ?QuoteResource $quotes = null;
     private ?BrandingResource $branding = null;
     private ?CreditPacksResource $creditPacks = null;
+    private ?ReferenceResource $reference = null;
 
     /**
      * Cree une instance du client avec Bearer token.
@@ -208,6 +210,19 @@ class ScellClient
     public function creditPacks(): CreditPacksResource
     {
         return $this->creditPacks ??= new CreditPacksResource($this->http);
+    }
+
+    /**
+     * Référentiel sociétés par pays (TVA, identifiant national, formes
+     * juridiques) — endpoint public `GET /api/v1/reference/countries[/{code}]`.
+     *
+     * Permet d'adapter un formulaire de saisie acheteur/vendeur au pays.
+     *
+     * @since 2.29.0
+     */
+    public function reference(): ReferenceResource
+    {
+        return $this->reference ??= new ReferenceResource($this->http);
     }
 
     /**

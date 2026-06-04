@@ -6,6 +6,7 @@ namespace Scell\Sdk;
 
 use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\CreditPacksResource;
+use Scell\Sdk\Resources\ReferenceResource;
 use Scell\Sdk\Resources\OnboardingResource;
 
 /**
@@ -48,6 +49,7 @@ class ScellPublicClient
     private readonly Config $config;
     private ?OnboardingResource $onboarding = null;
     private ?CreditPacksResource $creditPacks = null;
+    private ?ReferenceResource $reference = null;
 
     /**
      * @param string $publishableKey Cle publishable (pk_live_* ou pk_test_*)
@@ -108,6 +110,17 @@ class ScellPublicClient
     public function creditPacks(): CreditPacksResource
     {
         return $this->creditPacks ??= new CreditPacksResource($this->http);
+    }
+
+    /**
+     * Référentiel sociétés par pays (TVA, identifiant national, formes
+     * juridiques) — endpoint public `GET /api/v1/reference/countries[/{code}]`.
+     *
+     * @since 2.29.0
+     */
+    public function reference(): ReferenceResource
+    {
+        return $this->reference ??= new ReferenceResource($this->http);
     }
 
     /**

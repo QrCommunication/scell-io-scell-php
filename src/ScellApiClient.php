@@ -7,6 +7,7 @@ namespace Scell\Sdk;
 use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\BillingResource;
 use Scell\Sdk\Resources\BuyerResource;
+use Scell\Sdk\Resources\ReferenceResource;
 use Scell\Sdk\Resources\CreditPacksResource;
 use Scell\Sdk\Resources\FiscalResource;
 use Scell\Sdk\Resources\InvoiceResource;
@@ -76,6 +77,7 @@ class ScellApiClient
     private ?TenantIncomingInvoiceResource $incomingInvoices = null;
     private ?OnboardingResource $onboarding = null;
     private ?BuyerResource $buyers = null;
+    private ?ReferenceResource $reference = null;
     private ?SupplierResource $suppliers = null;
     private ?QuoteResource $quotes = null;
     private ?BrandingResource $branding = null;
@@ -230,6 +232,17 @@ class ScellApiClient
     public function tenantInvoices(): TenantInvoiceResource
     {
         return $this->tenantInvoices ??= new TenantInvoiceResource($this->http);
+    }
+
+    /**
+     * Référentiel sociétés par pays (TVA, identifiant national, formes
+     * juridiques) — endpoint public `GET /api/v1/reference/countries[/{code}]`.
+     *
+     * @since 2.29.0
+     */
+    public function reference(): ReferenceResource
+    {
+        return $this->reference ??= new ReferenceResource($this->http);
     }
 
     /**

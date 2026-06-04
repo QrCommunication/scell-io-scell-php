@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.29.0] - 2026-06-04
+
+### Added
+- `ReferenceResource` (`$client->reference()`) exposing the public country
+  company reference: `countries()` and `country(string $code)`. Backed by
+  `GET /api/v1/reference/countries[/{code}]` (no auth). For each country it
+  returns the VAT number (label/example/regex/VIES-checkable), the national
+  registration identifier (label/scheme ISO 6523/example/regex/required-for-B2B)
+  and the known legal forms — to build country-aware buyer/seller forms.
+- DTOs `CountryReference` and `LegalForm`.
+- Wired on `ScellClient`, `ScellApiClient` and `ScellPublicClient`.
+
 ## [2.28.1] - 2026-06-03
 
 ### Fixed
