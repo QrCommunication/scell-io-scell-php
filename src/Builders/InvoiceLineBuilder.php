@@ -25,21 +25,30 @@ use Scell\Sdk\Enums\VatCategory;
  *     ->withUnitPrice(2000.00)
  *     ->build();
  *
- * // Ligne autoliquidation (B2B EU avec numero TVA valide)
+ * // Autoliquidation SERVICES intra-UE B2B (numero TVA valide) -> AE, art. 283-2
  * $line = (new InvoiceLineBuilder())
  *     ->withDescription('Logiciel SaaS')
  *     ->withQuantity(1)
  *     ->withUnitPrice(500.00)
  *     ->withCategory(VatCategory::ReverseCharge)
+ *     ->withSupplyType('services')
  *     ->build();
  *
- * // Prestation electronique art. 259 A CGI (lieu = pays client)
+ * // Livraison intracommunautaire de BIENS -> K, art. 262 ter
  * $line = (new InvoiceLineBuilder())
- *     ->withDescription('Acces plateforme streaming')
- *     ->withQuantity(1)
- *     ->withUnitPrice(99.00)
- *     ->withCategory(VatCategory::Standard)
- *     ->withPlaceOfSupply('DE')
+ *     ->withDescription('Materiel informatique')
+ *     ->withQuantity(10)
+ *     ->withUnitPrice(200.00)
+ *     ->withCategory(VatCategory::IntracomGoods)
+ *     ->withSupplyType('goods')
+ *     ->build();
+ *
+ * // Forcer un taux divergent en l'assumant (evite le 409 VAT_CORRECTION_REQUIRED)
+ * $line = (new InvoiceLineBuilder())
+ *     ->withDescription('Prestation specifique')
+ *     ->withUnitPrice(1000.00)
+ *     ->withTaxRate(20.0)
+ *     ->withOverrideReason('Client sans numero TVA valide a la date d\'emission')
  *     ->build();
  * ```
  */
@@ -50,7 +59,9 @@ class InvoiceLineBuilder
     private float $unitPrice = 0.0;
     private float $taxRate;
     private ?VatCategory $category = null;
+    private ?string $supplyType = null;
     private ?string $placeOfSupply = null;
+    private ?string $overrideReason = null;
     private ?string $serviceNature = null;
     private ?array $metadata = null;
 
@@ -113,16 +124,60 @@ class InvoiceLineBuilder
     }
 
     /**
+     * Definit la nature de la fourniture : bien (`'goods'`) ou prestation de
+     * services (`'services'`).
+     *
+     * DISCRIMINANT pour l'exoneration intracommunautaire / export resolue par le
+     * serveur (champ top-level `supply_type`) :
+     *  - BIENS    -> INTRACOM_GOODS (K, art. 262 ter) intra-UE / EXPORT (G, art. 262 I) hors-UE
+     *  - SERVICES -> REVERSE_CHARGE (AE, art. 283-2) intra-UE / OUT_OF_SCOPE (O, art. 259-1) hors-UE
+     *
+     * Sans cette information, le serveur traite la ligne comme un service
+     * (cas dominant). A renseigner pour toute vente de biens transfrontaliere.
+     *
+     * @param string $type 'goods' ou 'services'
+     */
+    public function withSupplyType(string $type): self
+    {
+        $clone = clone $this;
+        $normalized = strtolower(trim($type));
+        $clone->supplyType = in_array($normalized, ['goods', 'services'], true) ? $normalized : null;
+        return $clone;
+    }
+
+    /**
      * Definit le pays de consommation / lieu de prestation (ISO 3166-1 alpha-2).
      *
-     * Utilise pour les prestations electroniques art. 259 A CGI ou les
-     * services B2B dont le lieu de prestation est fixe contractuellement.
-     * Stocke dans `metadata.place_of_supply`.
+     * Utilise pour les prestations art. 259 A CGI ou les services B2B dont le
+     * lieu de prestation est fixe contractuellement (immobilier, manifestation
+     * sur place, restauration, transport...). Envoye en champ top-level
+     * `place_of_supply` (consomme par le resolveur TVA serveur).
      */
     public function withPlaceOfSupply(string $countryIso2): self
     {
         $clone = clone $this;
         $clone->placeOfSupply = strtoupper($countryIso2);
+        return $clone;
+    }
+
+    /**
+     * Assume explicitement un taux/categorie de TVA divergent de la resolution
+     * serveur, en fournissant une raison tracable (champ top-level
+     * `vat_override_reason`).
+     *
+     * Sans cette raison, si le taux fourni est incoherent avec le contexte
+     * (ex: 20 % sur une vente intra-UE B2B avec numero TVA valide), l'API
+     * renvoie un **409 VAT_CORRECTION_REQUIRED** avec la facture corrigee
+     * proposee. Renseigner cette raison conserve VOTRE taux et trace le choix
+     * pour l'audit fiscal (responsabilite assumee).
+     *
+     * @param string $reason Justification metier (max 500 caracteres)
+     */
+    public function withOverrideReason(string $reason): self
+    {
+        $clone = clone $this;
+        $reason = trim($reason);
+        $clone->overrideReason = $reason !== '' ? mb_substr($reason, 0, 500) : null;
         return $clone;
     }
 
@@ -165,24 +220,6 @@ class InvoiceLineBuilder
         $totalTax = round($totalHt * ($this->taxRate / 100), 2);
         $totalTtc = round($totalHt + $totalTax, 2);
 
-        $meta = $this->metadata ?? [];
-
-        if ($this->category !== null) {
-            $meta['category'] = $this->category->value;
-            $reason = $this->category->exemptionReason();
-            if ($reason !== null) {
-                $meta['exemption_reason'] = $reason;
-            }
-        }
-
-        if ($this->placeOfSupply !== null) {
-            $meta['place_of_supply'] = $this->placeOfSupply;
-        }
-
-        if ($this->serviceNature !== null) {
-            $meta['service_nature'] = $this->serviceNature;
-        }
-
         $payload = [
             'description' => $this->description,
             'quantity'    => $this->quantity,
@@ -193,6 +230,26 @@ class InvoiceLineBuilder
             'total_ttc'   => $totalTtc,
         ];
 
+        // Champs de pilotage TVA — TOP-LEVEL (consommes par la resolution
+        // autoritaire serveur, qui les lit puis les replie dans metadata.*).
+        if ($this->category !== null) {
+            $payload['vat_category'] = $this->category->value;
+        }
+        if ($this->supplyType !== null) {
+            $payload['supply_type'] = $this->supplyType;
+        }
+        if ($this->placeOfSupply !== null) {
+            $payload['place_of_supply'] = $this->placeOfSupply;
+        }
+        if ($this->overrideReason !== null) {
+            $payload['vat_override_reason'] = $this->overrideReason;
+        }
+
+        // metadata : donnees libres + serviceNature informatif (audit trail).
+        $meta = $this->metadata ?? [];
+        if ($this->serviceNature !== null) {
+            $meta['service_nature'] = $this->serviceNature;
+        }
         if (!empty($meta)) {
             $payload['metadata'] = $meta;
         }

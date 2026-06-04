@@ -54,12 +54,18 @@ class ScellException extends Exception
         $response->getBody()->rewind();
 
         $message = $body['message'] ?? $body['error'] ?? 'Une erreur est survenue';
-        $scellCode = $body['code'] ?? null;
+        // Certaines erreurs metier portent le code dans `error` (ex: le 409
+        // VAT_CORRECTION_REQUIRED) plutot que dans `code`.
+        $scellCode = $body['code'] ?? $body['error'] ?? null;
 
         // Determiner le type d'exception selon le code HTTP
         return match (true) {
             $statusCode === 401 => new AuthenticationException($message, $statusCode, null, $scellCode, $body, $statusCode),
             $statusCode === 402 => new InsufficientBalanceException($message, $body['current_balance'] ?? null, $body['required_amount'] ?? null, $body),
+            $statusCode === 409 && $scellCode === 'VAT_CORRECTION_REQUIRED'
+                => new VatCorrectionRequiredException($message, $body),
+            $statusCode === 409 && $scellCode === 'QUOTE_NOT_EDITABLE'
+                => new QuoteNotEditableException($message, $body),
             $statusCode === 422 => ValidationException::fromResponse($response),
             $statusCode === 429 => RateLimitException::fromResponse($response),
             default => new self($message, $statusCode, null, $scellCode, $body, $statusCode),

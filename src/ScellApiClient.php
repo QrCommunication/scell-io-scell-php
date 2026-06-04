@@ -22,6 +22,7 @@ use Scell\Sdk\Resources\TenantDirectInvoiceResource;
 use Scell\Sdk\Resources\TenantIncomingInvoiceResource;
 use Scell\Sdk\Resources\TenantInvoiceResource;
 use Scell\Sdk\Resources\QuoteResource;
+use Scell\Sdk\Resources\RecurringInvoiceResource;
 use Scell\Sdk\Resources\TenantSignatureResource;
 
 /**
@@ -82,6 +83,7 @@ class ScellApiClient
     private ?QuoteResource $quotes = null;
     private ?BrandingResource $branding = null;
     private ?CreditPacksResource $creditPacks = null;
+    private ?RecurringInvoiceResource $recurringInvoices = null;
 
     /**
      * Cree une instance du client API.
@@ -333,6 +335,19 @@ class ScellApiClient
     public function creditPacks(): CreditPacksResource
     {
         return $this->creditPacks ??= new CreditPacksResource($this->http);
+    }
+
+    /**
+     * Resource pour la facturation recurrente (abonnements).
+     *
+     * Cree un profil (gabarit + cadence), gere son cycle de vie
+     * (pause/activate/cancel/run-now) et suit les occurrences emises.
+     *
+     * @since 2.34.0
+     */
+    public function recurringInvoices(): RecurringInvoiceResource
+    {
+        return $this->recurringInvoices ??= new RecurringInvoiceResource($this->http);
     }
 
     /**

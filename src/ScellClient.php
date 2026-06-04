@@ -18,6 +18,7 @@ use Scell\Sdk\Resources\WebhookResource;
 use Scell\Sdk\Resources\ApiKeyResource;
 use Scell\Sdk\Resources\CreditNoteResource;
 use Scell\Sdk\Resources\QuoteResource;
+use Scell\Sdk\Resources\RecurringInvoiceResource;
 use Scell\Sdk\Resources\ReferenceResource;
 
 /**
@@ -64,6 +65,7 @@ class ScellClient
     private ?BrandingResource $branding = null;
     private ?CreditPacksResource $creditPacks = null;
     private ?ReferenceResource $reference = null;
+    private ?RecurringInvoiceResource $recurringInvoices = null;
 
     /**
      * Cree une instance du client avec Bearer token.
@@ -223,6 +225,19 @@ class ScellClient
     public function reference(): ReferenceResource
     {
         return $this->reference ??= new ReferenceResource($this->http);
+    }
+
+    /**
+     * Resource pour la facturation recurrente (abonnements).
+     *
+     * Cree un profil (gabarit + cadence), gere son cycle de vie
+     * (pause/activate/cancel/run-now) et suit les occurrences emises.
+     *
+     * @since 2.34.0
+     */
+    public function recurringInvoices(): RecurringInvoiceResource
+    {
+        return $this->recurringInvoices ??= new RecurringInvoiceResource($this->http);
     }
 
     /**

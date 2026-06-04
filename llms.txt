@@ -3236,3 +3236,71 @@ DTOs disponibles :
 - `Scell\Sdk\DTOs\BlockPosition` — position generique (utilise par legacy + mentions + date)
 - `Scell\Sdk\DTOs\Mention` — mention juridique gravée
 - `Scell\Sdk\DTOs\DateBlock` — bloc date du jour
+
+## Recurring Invoices — Abonnements (v2.34.0)
+
+Émettez des factures de façon récurrente (abonnements). Un **profil** décrit un
+gabarit de facture (buyer, lignes, format) + une **cadence** (recurrence). À
+chaque échéance, le backend génère une **occurrence** → une facture (brouillon
+ou auto-soumise selon `emission_mode`). Resource exposée sur `ScellClient`
+(Bearer) et `ScellApiClient` (`sk_*`), à côté de `buyers()`.
+
+```php
+use Scell\Sdk\ScellApiClient;
+
+$api = ScellApiClient::withApiKey('sk_live_...');
+
+// Créer un profil mensuel auto-émis (1er du mois, 12 occurrences)
+$profile = $api->recurringInvoices()->create([
+    'title'         => 'Abonnement mensuel SaaS',
+    'buyer_id'      => $buyer->id,          // ou buyer_name + buyer_address inline
+    'currency'      => 'EUR',
+    'output_format' => 'facturx',           // facturx | ubl | cii
+    'payment_terms' => 'Paiement à 30 jours',
+    'lines' => [
+        ['description' => 'Licence', 'quantity' => 1, 'unit_price' => 49.0, 'vat_rate' => 20.0],
+    ],
+    'recurrence' => [
+        'interval_unit'  => 'month',        // day | week | month | year
+        'interval_count' => 1,
+        'day_of_month'   => 1,              // (month) ; day_of_week pour week
+    ],
+    'start_date'         => '2026-07-01',
+    'emission_mode'      => 'auto_send',    // draft | auto_send
+    'end_mode'           => 'after_occurrences', // never | on_date | after_occurrences
+    'max_occurrences'    => 12,
+    'notify_before_days' => 3,
+]);
+
+// Cycle de vie
+$api->recurringInvoices()->pause($profile->id);     // suspend
+$api->recurringInvoices()->activate($profile->id);  // reprend
+$api->recurringInvoices()->cancel($profile->id);    // terminal
+$api->recurringInvoices()->runNow($profile->id);    // émission immédiate (202)
+
+// Lister les profils (filtres status / sub_tenant_id / per_page)
+$profiles = $api->recurringInvoices()->list(['status' => 'active']);
+
+// Suivre les échéances émises
+$occurrences = $api->recurringInvoices()->occurrences($profile->id);
+foreach ($occurrences->data as $occ) {
+    if ($occ->isEmitted()) {
+        echo "{$occ->occurrenceNumber} → facture {$occ->invoiceNumber}\n";
+    } elseif ($occ->isFailed()) {
+        echo "échec : {$occ->lastError} ({$occ->attempts} tentatives)\n";
+    }
+}
+```
+
+Méthodes : `list`, `get`, `create`, `update` (PUT), `delete`, `occurrences`,
+`pause`, `activate`, `cancel`, `runNow`.
+
+DTOs disponibles :
+- `Scell\Sdk\DTOs\RecurringInvoiceProfile` — profil (recurrence{}, totals{},
+  lines[], nextRunAt, occurrencesCount) + helpers `isActive()`/`isPaused()`/
+  `isCompleted()`/`isCancelled()`/`isAutoSend()`/`isSandbox()`
+- `Scell\Sdk\DTOs\RecurringInvoiceOccurrence` — échéance (invoiceId, status,
+  attempts, lastError) + helpers `isEmitted()`/`isPending()`/`isFailed()`/`isSkipped()`
+
+Enums : `RecurrenceIntervalUnit`, `RecurrenceEndMode`, `RecurringEmissionMode`,
+`RecurringProfileStatus`, `RecurringOccurrenceStatus`.

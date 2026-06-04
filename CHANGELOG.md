@@ -2,6 +2,74 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.34.0] - 2026-06-04
+
+### Added (facturation récurrente — abonnements)
+- **`RecurringInvoiceResource`** (`$client->recurringInvoices()`) : nouvelle
+  resource exposée sur `ScellClient` (Bearer) et `ScellApiClient`
+  (`sk_*`/`pk_*`), à côté de `buyers()`. Gère le cycle de vie complet d'un
+  profil de facturation récurrente :
+  - `list(array $filters = [])` → `PaginatedResult<RecurringInvoiceProfile>`
+    (filtres `status`, `sub_tenant_id`, `per_page`)
+  - `get(string $id)`, `create(array $data)` (201), `update(string $id, array $data)`
+    (PUT), `delete(string $id)`
+  - `occurrences(string $id, array $filters = [])` →
+    `PaginatedResult<RecurringInvoiceOccurrence>` (suivi des échéances)
+  - `pause()`, `activate()`, `cancel()` → renvoient le profil mis à jour
+  - `runNow(string $id)` → déclenche une émission immédiate hors cadence (202,
+    traitement asynchrone — suivre via `occurrences()`)
+  - Les `Address` DTO passés en `buyer_address` / `buyer_shipping_address` sont
+    automatiquement normalisés en tableaux (même pattern que `BuyerResource`).
+- **DTO `RecurringInvoiceProfile`** : gabarit (buyer, lignes, format) + cadence
+  (`recurrence{}`), statut, mode d'émission, fin de récurrence, `next_run_at`,
+  `occurrences_count`, `totals{}`. Helpers `isActive()`, `isPaused()`,
+  `isCompleted()`, `isCancelled()`, `isAutoSend()`, `isSandbox()`. Statut et
+  modes exposés en chaînes (convention `Quote`).
+- **DTO `RecurringInvoiceOccurrence`** : une échéance → une facture
+  (`invoice_id` / `invoice_number`), `status`, `attempts`, `last_error`.
+  Helpers `isEmitted()`, `isPending()`, `isFailed()`, `isSkipped()`.
+- **Enums** : `RecurrenceIntervalUnit` (day/week/month/year),
+  `RecurrenceEndMode` (never/on_date/after_occurrences),
+  `RecurringEmissionMode` (draft/auto_send), `RecurringProfileStatus`
+  (active/paused/completed/cancelled), `RecurringOccurrenceStatus`
+  (pending/emitted/failed/skipped). Chacun avec `label()` + helpers
+  (`canPause()`, `isTerminal()`, `color()`, …).
+
+### Changed
+- `HttpClient::SDK_VERSION` : `2.34.0`.
+
+## [2.33.0] - 2026-06-04
+
+### Added (autoliquidation TVA intra-UE — biens & services)
+- **`VatCategory`** : 4 nouvelles catégories alignées sur le backend —
+  `IntracomGoods` (K, livraison intracommunautaire de biens, art. 262 ter I),
+  `Export` (G, exportation de biens hors UE, art. 262 I),
+  `FranchiseBase` (E, franchise en base auto-entrepreneur, art. 293 B),
+  `ExemptTraining` (E, formation professionnelle continue, art. 261-4-4°a).
+- **`VatCategory::justification(string $lang = 'fr')`** : nouvelle méthode —
+  mention légale exacte à inscrire sur la facture (BT-120), bilingue FR/EN,
+  miroir du backend. `ReverseCharge` → « Autoliquidation - Article 283-2 du CGI ».
+- **`InvoiceLineBuilder::withSupplyType('goods'|'services')`** : discrimine
+  l'exonération intra-UE/export (biens → K/G, services → AE/O).
+- **`InvoiceLineBuilder::withOverrideReason(string)`** : assume un taux divergent
+  avec trace fiscale (évite le 409 ci-dessous).
+- **`VatCorrectionRequiredException`** (409, `VAT_CORRECTION_REQUIRED`) : levée
+  quand un taux est incohérent avec le contexte vendeur/acheteur sans
+  `vat_override_reason`. Expose `getCorrections()` (taux/catégorie/mention
+  suggérés par ligne) et `getHint()`. La facture n'est PAS persistée.
+
+### Changed
+- **`InvoiceLineBuilder::build()`** : les champs de pilotage TVA sont désormais
+  émis en **top-level** (`vat_category`, `supply_type`, `place_of_supply`,
+  `vat_override_reason`) au lieu de `metadata.*` — c'est ce que la résolution
+  autoritaire serveur consomme réellement. **C'est ce qui fait enfin émettre le
+  code AE/K + la mention légale** (auparavant `metadata.category` était ignoré
+  → 0 % sans mention). Les noms de méthodes du builder sont inchangés.
+- `VatCategory::exemptionReason()` : `ZeroRated` retourne désormais `null`
+  (aligné backend — EN16931 BR-Z n'exige pas de mention).
+- `VatCategory::en16931Code()` : ajout des codes `K` (IntracomGoods) et `G` (Export).
+- `HttpClient::SDK_VERSION` : `2.33.0` (corrige une valeur obsolète `2.27.1`).
+
 ## [2.32.0] - 2026-06-04
 
 ### Changed (doc du contrat de création d'avoir)

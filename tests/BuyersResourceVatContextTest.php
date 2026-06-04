@@ -396,10 +396,16 @@ class BuyersResourceVatContextTest extends TestCase
         $this->assertNull(VatCategory::Intermediate->exemptionReason());
         $this->assertNull(VatCategory::Reduced->exemptionReason());
         $this->assertNull(VatCategory::SuperReduced->exemptionReason());
-        $this->assertSame('zero_rated', VatCategory::ZeroRated->exemptionReason());
+        // ZERO_RATED : aligné backend depuis 2.33.0 — pas de mention BT-120 (BR-Z).
+        $this->assertNull(VatCategory::ZeroRated->exemptionReason());
         $this->assertSame('exempt', VatCategory::Exempt->exemptionReason());
         $this->assertSame('reverse_charge', VatCategory::ReverseCharge->exemptionReason());
         $this->assertSame('out_of_scope', VatCategory::OutOfScope->exemptionReason());
+        // Catégories intra-UE / export / franchise / formation (2.33.0).
+        $this->assertSame('intracom_goods', VatCategory::IntracomGoods->exemptionReason());
+        $this->assertSame('export', VatCategory::Export->exemptionReason());
+        $this->assertSame('franchise_base', VatCategory::FranchiseBase->exemptionReason());
+        $this->assertSame('exempt_training', VatCategory::ExemptTraining->exemptionReason());
     }
 
     // -------------------------------------------------------------------------
@@ -420,8 +426,10 @@ class BuyersResourceVatContextTest extends TestCase
     }
 
     #[Test]
-    public function invoice_line_builder_with_category_sets_tax_rate_and_metadata(): void
+    public function invoice_line_builder_with_category_sets_tax_rate_top_level(): void
     {
+        // Depuis 2.33.0 : vat_category est émis en TOP-LEVEL (lu par la
+        // résolution autoritaire serveur), plus dans metadata.category.
         $line = (new InvoiceLineBuilder())
             ->withDescription('Logiciel EU')
             ->withQuantity(1)
@@ -430,15 +438,15 @@ class BuyersResourceVatContextTest extends TestCase
             ->build();
 
         $this->assertSame(0.0, $line['tax_rate']);
-        $this->assertSame('REVERSE_CHARGE', $line['metadata']['category']);
-        $this->assertSame('reverse_charge', $line['metadata']['exemption_reason']);
+        $this->assertSame('REVERSE_CHARGE', $line['vat_category']);
+        $this->assertArrayNotHasKey('metadata', $line);
         $this->assertSame(500.0, $line['total_ht']);
         $this->assertSame(0.0, $line['total_tax']);
         $this->assertSame(500.0, $line['total_ttc']);
     }
 
     #[Test]
-    public function invoice_line_builder_with_place_of_supply_adds_to_metadata(): void
+    public function invoice_line_builder_with_place_of_supply_is_top_level_uppercase(): void
     {
         $line = (new InvoiceLineBuilder())
             ->withDescription('Streaming')
@@ -448,11 +456,10 @@ class BuyersResourceVatContextTest extends TestCase
             ->withPlaceOfSupply('de')
             ->build();
 
-        // place_of_supply doit etre uppercase
-        $this->assertSame('DE', $line['metadata']['place_of_supply']);
-        $this->assertSame('STANDARD', $line['metadata']['category']);
-        // Standard : pas d'exemption_reason
-        $this->assertArrayNotHasKey('exemption_reason', $line['metadata']);
+        // place_of_supply top-level + uppercase
+        $this->assertSame('DE', $line['place_of_supply']);
+        $this->assertSame('STANDARD', $line['vat_category']);
+        $this->assertArrayNotHasKey('metadata', $line);
     }
 
     #[Test]
