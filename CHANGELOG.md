@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.32.0] - 2026-06-04
+
+### Changed (doc du contrat de création d'avoir)
+- `creditNotes()->create()` : docstring réécrite — un avoir **partiel** exige de
+  **sélectionner des lignes de la facture source** via `items[].invoice_line_id`
+  (prix + taux de TVA exact hérités par ligne ; multi-taux 20 %/5,5 %/exonéré 0 % OK).
+  `type` ('partial'|'total') documenté, `quantity` optionnel.
+- `creditNotes()->remainingCreditable()` : type de retour corrigé (l'ancien `lines`/
+  `total_ht/tax/ttc` était faux) → `items[]` avec invoice_line_id/remaining_quantity/
+  tax_rate/remaining_amount_ht + total_remaining + can_be_credited.
+
+
 ## [2.31.0] - 2026-06-04
 
 ### Added

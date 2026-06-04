@@ -27,7 +27,8 @@ use Scell\Sdk\Http\HttpClient;
  *     'invoice_id' => 'uuid-facture',
  *     'reason' => 'Remboursement partiel',
  *     'type' => 'partial',
- *     'items' => [...],
+ *     // avoir partiel : sélectionner des lignes de la facture (TVA héritée par ligne)
+ *     'items' => [['invoice_line_id' => 'uuid-ligne', 'quantity' => 1]],
  * ]);
  *
  * // Envoyer un avoir
@@ -81,16 +82,40 @@ class CreditNoteResource
     }
 
     /**
-     * Cree un nouvel avoir.
+     * Cree un avoir (credit note).
+     *
+     * Un avoir cible TOUJOURS une facture existante (`invoice_id`) et ne peut
+     * jamais inventer de montants :
+     *  - `type = 'total'`   : credite TOUTES les lignes de la facture (`items` ignore).
+     *  - `type = 'partial'` : il faut **selectionner des lignes de la facture source**
+     *    via `items[].invoice_line_id`. Le prix unitaire et le **taux de TVA exact de
+     *    chaque ligne** sont herites (une facture peut meler 20 % / 5,5 % / exonere 0 %
+     *    — chaque ligne creditee au bon taux). `quantity` optionnel (defaut = quantite
+     *    restante de la ligne).
+     *
+     * Workflow : appeler d'abord {@see remainingCreditable()} pour connaitre les lignes
+     * (et quantites) encore creditables, puis selectionner parmi elles.
      *
      * @param array{
      *     invoice_id: string,
      *     reason: string,
-     *     type: string,
-     *     items?: array[],
-     *     external_id?: string,
-     *     metadata?: array
+     *     type: 'partial'|'total',
+     *     items?: array<int, array{invoice_line_id: string, quantity?: float|int}>,
+     *     sub_tenant_id?: string
      * } $data Donnees de l'avoir
+     *
+     * @example
+     * ```php
+     * $creditable = $client->creditNotes()->remainingCreditable('uuid-facture');
+     * $avoir = $client->creditNotes()->create([
+     *     'invoice_id' => 'uuid-facture',
+     *     'reason' => 'Retour partiel',
+     *     'type' => 'partial',
+     *     'items' => [
+     *         ['invoice_line_id' => $creditable['data']['items'][0]['invoice_line_id'], 'quantity' => 1],
+     *     ],
+     * ]);
+     * ```
      */
     public function create(array $data): CreditNote
     {
@@ -149,10 +174,20 @@ class CreditNoteResource
     }
 
     /**
-     * Recupere les montants restants creditables pour une facture.
+     * Liste les lignes d'une facture encore creditables (apres avoirs anterieurs),
+     * avec la quantite restante et le taux de TVA exact par ligne.
+     *
+     * Etape de decouverte AVANT un avoir partiel : choisir des `invoice_line_id`
+     * dans `data.items[]` puis les passer a {@see create()}.
      *
      * @param string $invoiceId UUID de la facture
-     * @return array{data: array{total_ht: float, total_tax: float, total_ttc: float, lines: array}}
+     * @return array{data: array{
+     *     invoice_id: string,
+     *     invoice_number: string,
+     *     items: array<int, array{invoice_line_id: string, description: string, original_quantity: float, credited_quantity: float, remaining_quantity: float, unit_price: float, tax_rate: float, remaining_amount_ht: float}>,
+     *     total_remaining: float,
+     *     can_be_credited: bool
+     * }}
      */
     public function remainingCreditable(string $invoiceId): array
     {
