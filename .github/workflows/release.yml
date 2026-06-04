@@ -60,7 +60,14 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-interaction
+        # Désactive le blocage advisory du resolver Composer 2.8+ : les dev-deps
+        # de test (orchestra/testbench -> laravel/framework) peuvent être affectées
+        # par des advisories downstream sans que cela doive bloquer la release de
+        # cette librairie (qui n'embarque pas Laravel). `|| true` : no-op si le
+        # Composer du runner ne connaît pas encore la clé.
+        run: |
+          composer config --no-plugins policy.advisories.block false || true
+          composer install --prefer-dist --no-progress --no-interaction
 
       - name: Validate composer.json
         run: composer validate --strict
