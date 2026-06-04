@@ -214,7 +214,7 @@ class ScellClient
 
     /**
      * Référentiel sociétés par pays (TVA, identifiant national, formes
-     * juridiques) — endpoint public `GET /api/v1/reference/countries[/{code}]`.
+     * juridiques) — accès authentifié `GET /api/v1/reference/countries[/{code}]`.
      *
      * Permet d'adapter un formulaire de saisie acheteur/vendeur au pays.
      *

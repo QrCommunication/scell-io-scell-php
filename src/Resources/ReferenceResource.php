@@ -8,7 +8,7 @@ use Scell\Sdk\DTOs\CountryReference;
 use Scell\Sdk\Http\HttpClient;
 
 /**
- * Référentiel sociétés par pays — endpoint public (aucune authentification).
+ * Référentiel sociétés par pays — accès authentifié (Sanctum ou clé API sk_/pk_).
  *
  * Expose, par pays, le numéro de TVA, l'identifiant national d'entreprise
  * (registre + format) et les formes juridiques connues, pour adapter

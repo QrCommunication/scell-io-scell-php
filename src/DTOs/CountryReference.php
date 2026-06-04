@@ -6,7 +6,7 @@ namespace Scell\Sdk\DTOs;
 
 /**
  * Référentiel sociétés d'un pays, servi par
- * `GET /api/v1/reference/countries[/{code}]` (endpoint public, sans auth).
+ * `GET /api/v1/reference/countries[/{code}]` (authentifié — Sanctum ou clé API).
  *
  * Permet de construire dynamiquement un formulaire de saisie acheteur/vendeur
  * adapté au pays : libellé + exemple + regex de format de l'identifiant

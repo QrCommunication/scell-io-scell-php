@@ -236,7 +236,7 @@ class ScellApiClient
 
     /**
      * Référentiel sociétés par pays (TVA, identifiant national, formes
-     * juridiques) — endpoint public `GET /api/v1/reference/countries[/{code}]`.
+     * juridiques) — accès authentifié `GET /api/v1/reference/countries[/{code}]`.
      *
      * @since 2.29.0
      */
