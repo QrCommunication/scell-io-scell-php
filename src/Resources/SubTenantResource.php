@@ -280,4 +280,20 @@ class SubTenantResource
 
         return SubTenant::fromArray($response['data']);
     }
+
+    /**
+     * Simulateur pré-émission : projette les jauges de seuils SI une facture
+     * hypothétique de `amount` (HT) était émise dans `category`. Le
+     * `level`/`actionable` des jauges reflète l'état POST-facture, permettant de
+     * vérifier un franchissement AVANT d'émettre. Lecture seule (ne persiste rien).
+     *
+     * POST /v1/tenant/sub-tenants/{id}/thresholds/simulate
+     *
+     * @param array{amount: float|int, category: string} $data  category : goods|service|accommodation
+     * @return array{data: array<string, mixed>, simulated: array{amount: float, category: string}, disclaimer: string}
+     */
+    public function simulateThresholds(string $id, array $data): array
+    {
+        return $this->http->post("tenant/sub-tenants/{$id}/thresholds/simulate", $data);
+    }
 }

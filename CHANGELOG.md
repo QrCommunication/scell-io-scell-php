@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.31.0] - 2026-06-04
+
+### Added
+- **Simulateur de seuils pré-émission** (`$client->subTenants->simulateThresholds($id, ['amount' => ..., 'category' => ...])`) :
+  projette les jauges de seuils SI une facture HT hypothétique était émise dans
+  `category` (goods|service|accommodation). Le `level`/`actionable` reflète l'état
+  POST-facture → vérifier un franchissement AVANT d'émettre. Lecture seule.
+  Retourne `array{data, simulated, disclaimer}`.
+
 ## [2.30.0] - 2026-06-04
 
 ### Added

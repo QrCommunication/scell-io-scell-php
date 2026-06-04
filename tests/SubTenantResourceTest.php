@@ -202,4 +202,31 @@ class SubTenantResourceTest extends TestCase
         $this->assertSame('liable', json_decode((string) $captured[0]->getBody(), true)['vat_status']);
         $this->assertInstanceOf(\Scell\Sdk\DTOs\SubTenant::class, $result);
     }
+
+    #[Test]
+    public function simulate_thresholds_posts_endpoint_with_amount_and_category(): void
+    {
+        $captured = [];
+        $http = $this->buildHttp(
+            [new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                'data' => ['sub_tenant_id' => 'sub-uuid-42', 'fiscal_year' => 2026, 'gauges' => [], 'new_alerts' => []],
+                'simulated' => ['amount' => 5000, 'category' => 'service'],
+                'disclaimer' => 'Information non contractuelle...',
+            ]))],
+            $captured,
+        );
+
+        $result = (new SubTenantResource($http))->simulateThresholds('sub-uuid-42', [
+            'amount' => 5000,
+            'category' => 'service',
+        ]);
+
+        $this->assertSame('POST', $captured[0]->getMethod());
+        $this->assertSame(
+            'https://api.scell.io/api/v1/tenant/sub-tenants/sub-uuid-42/thresholds/simulate',
+            (string) $captured[0]->getUri()->withQuery('')
+        );
+        $this->assertSame(5000, json_decode((string) $captured[0]->getBody(), true)['amount']);
+        $this->assertSame('service', $result['simulated']['category']);
+    }
 }
