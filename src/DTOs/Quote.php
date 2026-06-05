@@ -71,6 +71,11 @@ readonly class Quote
          * confirmation Scell.io).
          */
         public ?string $callbackUrl = null,
+        /**
+         * Scellement du devis signe : signature PAdES + ancrage Bitcoin
+         * (OpenTimestamps). Present uniquement une fois le devis scelle.
+         */
+        public ?QuoteSealing $sealing = null,
     ) {}
 
     /**
@@ -86,6 +91,11 @@ readonly class Quote
         $signature = null;
         if (isset($data['signature']) && is_array($data['signature'])) {
             $signature = QuoteSignature::fromArray($data['signature']);
+        }
+
+        $sealing = null;
+        if (isset($data['sealing']) && is_array($data['sealing'])) {
+            $sealing = QuoteSealing::fromArray($data['sealing']);
         }
 
         $buyerShipping = null;
@@ -140,6 +150,7 @@ readonly class Quote
             depositInvoiceId: $data['deposit_invoice_id'] ?? null,
             balanceInvoiceId: $data['balance_invoice_id'] ?? null,
             callbackUrl: $data['callback_url'] ?? null,
+            sealing: $sealing,
         );
     }
 
@@ -216,6 +227,14 @@ readonly class Quote
     public function isSigned(): bool
     {
         return $this->signature !== null && $this->signature->isSigned();
+    }
+
+    /**
+     * Indique si le devis a ete scelle (PDF signe PAdES + ancrage Bitcoin).
+     */
+    public function isSealed(): bool
+    {
+        return $this->sealing !== null && $this->sealing->isSealed;
     }
 
     /**

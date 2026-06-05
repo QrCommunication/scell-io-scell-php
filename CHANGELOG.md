@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.35.0] - 2026-06-05
+
+### Added (scellement des devis — PAdES + ancrage Bitcoin)
+- **DTO `QuoteSealing`** : expose le scellement d'un devis signé. Le PDF du
+  devis est signé au format **PAdES**, et son empreinte **SHA-256** est ancrée
+  dans la blockchain **Bitcoin** via **OpenTimestamps**. Champs :
+  - `isSealed` (`bool`) — devis scellé ou non
+  - `padesSignedAt` (`?string`, ISO 8601) — date de signature PAdES
+  - `signedPdfSha256` (`?string`) — empreinte SHA-256 (hex) du PDF scellé,
+    soit le hash ancré dans Bitcoin
+  - `otsStatus` (`?string` : `pending` | `confirmed` | `failed`)
+  - `otsSubmittedAt` (`?string`, ISO 8601) — soumission aux calendars OTS
+  - `otsBitcoinConfirmedAt` (`?string`, ISO 8601) — confirmation de l'ancrage
+  - `bitcoinBlockHeight` (`?int`) — hauteur du bloc Bitcoin d'ancrage
+  - `otsProofBase64` (`?string`) — receipt OpenTimestamps (.ots) en base64
+  - Helpers `isOtsConfirmed()`, `isOtsPending()`, `isOtsFailed()`.
+- **`Quote::$sealing`** : nouvelle propriété optionnelle (`?QuoteSealing`),
+  hydratée depuis la clé `sealing` de la réponse API. Présente une fois le
+  devis scellé. Nouveau helper `Quote::isSealed()`.
+
+### Changed
+- `HttpClient::SDK_VERSION` : `2.35.0`.
+
 ## [2.34.0] - 2026-06-04
 
 ### Added (facturation récurrente — abonnements)
