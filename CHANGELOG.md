@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [2.35.0] - 2026-06-05
 
+### Added (branding email — preview + logo-upload)
+- **`BrandingResource` — `previewTenant()` / `previewSubTenant($id)`** : retournent
+  l'**aperçu de l'email brandé** (logo, couleur primaire, footer, signature) tel
+  qu'il apparaîtra au destinataire, **avant tout envoi**. Le rendu est en HTML par
+  défaut (idéal à injecter dans un `<iframe srcdoc>` pour une prévisualisation
+  live) ; envoyer un header `Accept: application/pdf` pour obtenir le rendu PDF.
+  Endpoints : `GET /branding/tenant/preview` et
+  `GET /branding/sub-tenants/{id}/preview` (auth `sk_*`).
+- **`logoUploadUrlTenant()` / `logoUploadUrlSubTenant($id)`** : désormais pleinement
+  supportés par le backend (URL S3 pré-signée). La réponse contient `url` (PUT cible),
+  `public_url` (à persister via `updateTenant(['logo_url' => ...])`), `expires_at`,
+  et un éventuel `headers` à renvoyer dans la requête PUT.
+- Vérification des chemins de la resource : `branding/tenant`,
+  `branding/tenant/preview`, `branding/tenant/logo-upload-url` et les variantes
+  `branding/sub-tenants/{id}/...` ciblent les routes backend correctes.
+
 ### Added (scellement des devis — PAdES + ancrage Bitcoin)
 - **DTO `QuoteSealing`** : expose le scellement d'un devis signé. Le PDF du
   devis est signé au format **PAdES**, et son empreinte **SHA-256** est ancrée

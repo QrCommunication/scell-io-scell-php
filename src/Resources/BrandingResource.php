@@ -100,8 +100,15 @@ class BrandingResource
      * 2. PUT le fichier directement sur `$result['url']` (pas d'auth).
      * 3. Appeler updateTenant(['logo_url' => $result['public_url']]).
      *
+     * Le tableau retourne contient :
+     * - `url`         : URL S3 pre-signee a laquelle PUT le binaire du logo.
+     * - `public_url`  : URL publique finale du logo (a persister via updateTenant).
+     * - `expires_at`  : expiration de l'URL pre-signee (ISO 8601).
+     * - `headers`     : en-tetes a renvoyer tels quels dans la requete PUT
+     *                   (ex: `Content-Type`). Optionnel selon la config S3.
+     *
      * @param string $mimeType Type MIME de l'image (ex: 'image/png', 'image/jpeg', 'image/svg+xml')
-     * @return array{url: string, public_url: string, expires_at: string}
+     * @return array{url: string, public_url: string, expires_at: string, headers?: array<string, string>}
      */
     public function logoUploadUrlTenant(string $mimeType = 'image/png'): array
     {
@@ -111,8 +118,11 @@ class BrandingResource
     /**
      * Genere une URL presignee pour uploader le logo d'un sub-tenant.
      *
+     * Memes champs de reponse que {@see logoUploadUrlTenant()}
+     * (`url`, `public_url`, `expires_at`, `headers`).
+     *
      * @param string $mimeType Type MIME de l'image (ex: 'image/png', 'image/jpeg', 'image/svg+xml')
-     * @return array{url: string, public_url: string, expires_at: string}
+     * @return array{url: string, public_url: string, expires_at: string, headers?: array<string, string>}
      */
     public function logoUploadUrlSubTenant(string $subTenantId, string $mimeType = 'image/png'): array
     {
@@ -123,9 +133,14 @@ class BrandingResource
     }
 
     /**
-     * Retourne un apercu HTML/PDF du rendu avec le branding tenant courant.
+     * Retourne l'apercu de l'email brande du tenant courant, tel qu'il
+     * apparaitra au destinataire — AVANT tout envoi.
      *
-     * @return string Contenu binaire (HTML ou PDF selon Accept header)
+     * Par defaut le rendu est en HTML (`text/html`), ideal a injecter dans
+     * un `<iframe srcdoc="...">` pour une previsualisation live. Envoyer un
+     * header `Accept: application/pdf` pour obtenir le rendu PDF.
+     *
+     * @return string Contenu brut (HTML par defaut, ou PDF selon le header Accept)
      */
     public function previewTenant(): string
     {
@@ -133,9 +148,14 @@ class BrandingResource
     }
 
     /**
-     * Retourne un apercu HTML/PDF du rendu avec le branding sub-tenant courant.
+     * Retourne l'apercu de l'email brande d'un sub-tenant, tel qu'il
+     * apparaitra au destinataire — AVANT tout envoi. Le sub-tenant doit
+     * appartenir au tenant courant (anti-IDOR cote serveur).
      *
-     * @return string Contenu binaire (HTML ou PDF selon Accept header)
+     * Memes regles de format que {@see previewTenant()} (HTML par defaut,
+     * PDF via `Accept: application/pdf`).
+     *
+     * @return string Contenu brut (HTML par defaut, ou PDF selon le header Accept)
      */
     public function previewSubTenant(string $subTenantId): string
     {

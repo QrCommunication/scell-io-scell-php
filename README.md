@@ -908,6 +908,11 @@ $branding = $api->branding()->updateSubTenant($subTenantId, [
 // URL presignee logo sub-tenant
 $upload = $api->branding()->logoUploadUrlSubTenant($subTenantId, 'image/jpeg');
 
+// Apercu de l'email brande AVANT tout envoi (rendu HTML par defaut)
+// Ideal a injecter dans un <iframe srcdoc="..."> pour une previsualisation live.
+$html    = $api->branding()->previewTenant();              // string (HTML)
+$subHtml = $api->branding()->previewSubTenant($subTenantId);
+
 // Envoyer une facture par email (utilise le branding tenant si isReady())
 $result = $api->invoices()->sendByEmail($invoiceId, [
     'email'   => 'client@example.com',
