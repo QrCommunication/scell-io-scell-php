@@ -2,6 +2,106 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.0.0] - 2026-06-07
+
+### BREAKING CHANGES — Suppliers
+
+#### Endpoints API supprimés côté serveur (HTTP 405)
+
+- **`POST /suppliers`** — supprimé. L'API Scell.io dérive désormais les
+  fournisseurs automatiquement à partir des factures reçues. Il n'est
+  plus possible (ni nécessaire) de créer un fournisseur manuellement.
+- **`DELETE /suppliers/{id}`** — supprimé. Un fournisseur dont l'identité
+  est portée par une ou plusieurs factures ne peut pas être supprimé
+  pour garantir l'intégrité du ledger ISCA.
+
+#### Méthodes SDK supprimées
+
+- **`SupplierResource::create()`** — supprimée.
+- **`SupplierResource::delete()`** — supprimée.
+
+#### `SupplierResource::update()` restreint
+
+- Seuls les champs d'**enrichissement** sont désormais transmis à l'API :
+  `email`, `phone`, `notes`, `metadata`.
+- Les champs d'**identité** (`name`, `siret`, `vat_number`, `legal_id`,
+  `legal_id_scheme`, `country`, `billing_address`, `is_individual`) sont
+  filtrés côté SDK via `array_intersect_key` — les passer dans le tableau
+  `$data` est sans effet (aucune erreur levée, mais ils ne sont pas envoyés).
+
+### Migration depuis v2.x
+
+```php
+// ❌ AVANT (v2.x) — ne compile plus, méthode supprimée
+$client->suppliers()->create([...]);
+$client->suppliers()->delete('supplier-id');
+
+// ✅ APRÈS (v3.0.0) — les fournisseurs sont créés automatiquement
+//    via les factures reçues ; enrichissez-les via update()
+$client->suppliers()->update('supplier-id', [
+    'email' => 'contact@fournisseur.fr',
+    'phone' => '+33472000000',
+    'notes' => 'Fournisseur principal papeterie',
+]);
+```
+
+### Note sur le nouveau modèle de données
+
+Un **fournisseur** est désormais un fournisseur **dérivé** : son identité
+(`name`, `siret`, `country`, `billing_address`, etc.) est extraite des
+factures entrantes traitées par Scell.io — la facture est la source de
+vérité. Seuls les champs d'enrichissement (coordonnées supplémentaires,
+notes internes, métadonnées) sont modifiables.
+
+---
+
+## [2.37.0] - 2026-06-07
+
+### Added — Catalogue produits/services (Products + ProductCategories)
+
+Nouveau catalogue réutilisable scope `(tenant, sub_tenant)`, calqué sur le
+registre des acheteurs (`buyers()`). Réutilisez un produit pour pré-remplir
+une ligne de facture/devis sans resaisir libellé, prix HT et taux de TVA.
+
+#### Ressources
+
+- **`ProductResource`** (`$client->products()`) — `list()`, `get()`,
+  `create()`, `update()` (PATCH), `replace()` (PUT), `delete()`.
+- **`ProductCategoryResource`** (`$client->productCategories()`) — `list()`,
+  `get()`, `create()`, `update()` (PATCH), `replace()` (PUT), `delete()`.
+
+Exposées sur `ScellClient` (Bearer) et `ScellApiClient` (`sk_*` /
+`pk_*`), aux côtés de `buyers()`.
+
+#### DTOs
+
+- **`Scell\Sdk\DTOs\Product`** (readonly) — `id`, `tenantId`, `subTenantId`,
+  `productCategoryId`, `name`, `description`, `sku`, `revenueCategory`
+  (`goods` | `service` | `accommodation` | null), `revenueCategoryLabel`,
+  `unit` (défaut `C62`), `unitPriceHt`, `defaultTaxRate`, `defaultDiscountRate`,
+  `currency` (défaut `EUR`), `isActive`, `productCategory` (imbriqué),
+  `metadata`, `notes`, `createdAt`, `updatedAt`.
+- **`Scell\Sdk\DTOs\ProductCategory`** (readonly) — `id`, `tenantId`,
+  `subTenantId`, `name`, `color`, `description`, `position`, `productsCount`,
+  `metadata`, `createdAt`, `updatedAt`.
+
+#### Lignes de facture/devis — champs catalogue
+
+`InvoiceLineBuilder` accepte trois nouveaux helpers (champs top-level) :
+
+- `withProductId(string $id)` — pré-remplit la ligne depuis un produit du
+  catalogue (champ `product_id`).
+- `withSaveToCatalog(bool $value = true)` — enregistre la ligne comme produit
+  (upsert serveur, champ `save_to_catalog`).
+- `withProductCategoryId(string $id)` — range le produit enregistré dans une
+  catégorie (champ `product_category_id`).
+
+### Changed
+
+- `HttpClient::SDK_VERSION` → `2.37.0`.
+
+---
+
 ## [2.36.0] - 2026-06-07
 
 ### Fixed (totaux niveau facture — création tenant)

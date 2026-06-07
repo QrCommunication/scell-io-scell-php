@@ -1101,6 +1101,8 @@ composer check
 | `invoices()` | Gestion des factures electroniques |
 | `signatures()` | Gestion des signatures electroniques |
 | `companies()` | Gestion des entreprises |
+| `products()` | Catalogue produits/services (CRUD, scope tenant + sub_tenant) |
+| `productCategories()` | Categories du catalogue produits (CRUD) |
 | `balance()` | Consultation du solde |
 | `webhooks()` | Gestion des webhooks |
 | `branding()` | Configuration marque tenant (logo, couleur, textes emails) |
@@ -1120,6 +1122,8 @@ composer check
 | `stats()` | Statistiques (overview, monthly, par sub-tenant) |
 | `billing()` | Facturation plateforme (invoices, usage, top-up) |
 | `quotes()` | Devis (builder, send, convert, echeancier, paymentSchedule()) |
+| `products()` | Catalogue produits/services (CRUD, scope tenant + sub_tenant) |
+| `productCategories()` | Categories du catalogue produits (CRUD) |
 | `branding()` | Configuration marque tenant + sub-tenant (logo, couleur, emails) |
 
 ### ScellTenantClient (Multi-Tenant Partner)

@@ -18,11 +18,11 @@ use Scell\Sdk\Http\HttpClient;
 use Scell\Sdk\Resources\SupplierResource;
 
 /**
- * Tests pour SupplierResource (SDK v2.26.0).
+ * Tests pour SupplierResource (SDK v3.0.0).
  *
- * Miroir de BuyerResource cote emetteur. Couvre le CRUD complet :
- * list (avec filtres), get, create, update, delete + le mapping du DTO
- * Supplier. Pas de vat-context (concept acheteur uniquement).
+ * Les fournisseurs sont dérivés des factures reçues (source de vérité = facture).
+ * Seuls email/phone/notes/metadata sont modifiables via update().
+ * create() et delete() ont été supprimés (API 405 — endpoints fermés côté serveur).
  */
 class SuppliersResourceTest extends TestCase
 {
@@ -159,50 +159,7 @@ class SuppliersResourceTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
-    // create()
-    // -------------------------------------------------------------------------
-
-    #[Test]
-    public function create_posts_payload_and_normalizes_address_dto(): void
-    {
-        $captured = [];
-        $http = $this->buildHttp(
-            [new Response(201, ['Content-Type' => 'application/json'], json_encode([
-                'data' => $this->supplierPayload('supplier-new'),
-            ]))],
-            $captured,
-        );
-
-        $supplier = (new SupplierResource($http))->create([
-            'name'            => 'Fournitures Pro SARL',
-            'country'         => 'FR',
-            'billing_address' => new Address(
-                line1: '12 rue des Acacias',
-                postalCode: '69001',
-                city: 'Lyon',
-                country: 'FR',
-            ),
-            'siret'           => '12345678901234',
-        ]);
-
-        $this->assertInstanceOf(Supplier::class, $supplier);
-        $this->assertSame('supplier-new', $supplier->id);
-
-        $this->assertSame('POST', $captured[0]->getMethod());
-        $this->assertStringContainsString('/suppliers', (string) $captured[0]->getUri());
-
-        $body = json_decode((string) $captured[0]->getBody(), true);
-        // L'Address DTO doit etre normalise en tableau
-        $this->assertIsArray($body['billing_address']);
-        $this->assertSame('12 rue des Acacias', $body['billing_address']['line1']);
-        $this->assertSame('69001', $body['billing_address']['postal_code']);
-        $this->assertSame('12345678901234', $body['siret']);
-        // Pas de shipping_address (concept acheteur)
-        $this->assertArrayNotHasKey('shipping_address', $body);
-    }
-
-    // -------------------------------------------------------------------------
-    // update()
+    // update() — champs d'enrichissement uniquement
     // -------------------------------------------------------------------------
 
     #[Test]
@@ -231,23 +188,95 @@ class SuppliersResourceTest extends TestCase
         $this->assertSame('Note mise a jour', $body['notes']);
     }
 
-    // -------------------------------------------------------------------------
-    // delete()
-    // -------------------------------------------------------------------------
-
     #[Test]
-    public function delete_calls_delete_endpoint(): void
+    public function update_strips_identity_fields_from_patch_payload(): void
     {
+        // Garantit que les champs d'identité (dérivés des factures) ne sont
+        // jamais transmis à l'API même si le consommateur les passe par erreur.
         $captured = [];
         $http = $this->buildHttp(
-            [new Response(204, [], '')],
+            [new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                'data' => $this->supplierPayload('supplier-x'),
+            ]))],
             $captured,
         );
 
-        (new SupplierResource($http))->delete('supplier-9');
+        (new SupplierResource($http))->update('supplier-x', [
+            // champs d'enrichissement légitimes
+            'email'    => 'nouveau@example.com',
+            'phone'    => '+33600000001',
+            'notes'    => 'Note test',
+            'metadata' => ['ref' => 'X'],
+            // champs d'identité — ne DOIVENT PAS être transmis
+            'name'             => 'Tentative de modification',
+            'siret'            => '00000000000000',
+            'vat_number'       => 'FR00000000000',
+            'country'          => 'DE',
+            'billing_address'  => ['line1' => 'hack'],
+            'is_individual'    => true,
+            'legal_id'         => 'HACK',
+            'legal_id_scheme'  => 'HACK',
+        ]);
 
-        $this->assertSame('DELETE', $captured[0]->getMethod());
-        $this->assertStringContainsString('/suppliers/supplier-9', (string) $captured[0]->getUri());
+        $body = json_decode((string) $captured[0]->getBody(), true);
+
+        // Seuls les 4 champs d'enrichissement doivent apparaître
+        $this->assertSame(['email', 'phone', 'notes', 'metadata'], array_keys($body));
+        $this->assertSame('nouveau@example.com', $body['email']);
+        $this->assertSame('+33600000001', $body['phone']);
+
+        // Les champs d'identité ne doivent PAS être présents
+        $this->assertArrayNotHasKey('name', $body);
+        $this->assertArrayNotHasKey('siret', $body);
+        $this->assertArrayNotHasKey('vat_number', $body);
+        $this->assertArrayNotHasKey('country', $body);
+        $this->assertArrayNotHasKey('billing_address', $body);
+        $this->assertArrayNotHasKey('is_individual', $body);
+        $this->assertArrayNotHasKey('legal_id', $body);
+        $this->assertArrayNotHasKey('legal_id_scheme', $body);
+    }
+
+    #[Test]
+    public function update_sends_only_provided_enrichment_fields(): void
+    {
+        // Vérifie qu'un PATCH partiel (1 seul champ) n'envoie que ce champ
+        $captured = [];
+        $payload = $this->supplierPayload('supplier-z');
+        $payload['email'] = 'updated@example.com';
+        $http = $this->buildHttp(
+            [new Response(200, ['Content-Type' => 'application/json'], json_encode([
+                'data' => $payload,
+            ]))],
+            $captured,
+        );
+
+        (new SupplierResource($http))->update('supplier-z', ['email' => 'updated@example.com']);
+
+        $body = json_decode((string) $captured[0]->getBody(), true);
+        $this->assertSame(['email'], array_keys($body));
+        $this->assertSame('updated@example.com', $body['email']);
+    }
+
+    // -------------------------------------------------------------------------
+    // Garde-fous — create() et delete() sont supprimés (BREAKING v3.0.0)
+    // -------------------------------------------------------------------------
+
+    #[Test]
+    public function resource_does_not_expose_create_method(): void
+    {
+        $this->assertFalse(
+            method_exists(SupplierResource::class, 'create'),
+            'create() a été supprimé en v3.0.0 : les fournisseurs sont dérivés des factures reçues'
+        );
+    }
+
+    #[Test]
+    public function resource_does_not_expose_delete_method(): void
+    {
+        $this->assertFalse(
+            method_exists(SupplierResource::class, 'delete'),
+            'delete() a été supprimé en v3.0.0 : endpoint API 405'
+        );
     }
 
     // -------------------------------------------------------------------------

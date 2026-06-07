@@ -11,6 +11,8 @@ use Scell\Sdk\Resources\BuyerResource;
 use Scell\Sdk\Resources\CompanyResource;
 use Scell\Sdk\Resources\CreditPacksResource;
 use Scell\Sdk\Resources\InvoiceResource;
+use Scell\Sdk\Resources\ProductCategoryResource;
+use Scell\Sdk\Resources\ProductResource;
 use Scell\Sdk\Resources\SignatureResource;
 use Scell\Sdk\Resources\SupplierResource;
 use Scell\Sdk\Resources\TenantCreditNoteResource;
@@ -55,6 +57,8 @@ class ScellClient
     private ?SignatureResource $signatures = null;
     private ?CompanyResource $companies = null;
     private ?BuyerResource $buyers = null;
+    private ?ProductResource $products = null;
+    private ?ProductCategoryResource $productCategories = null;
     private ?SupplierResource $suppliers = null;
     private ?BalanceResource $balance = null;
     private ?WebhookResource $webhooks = null;
@@ -124,12 +128,42 @@ class ScellClient
     }
 
     /**
+     * Resource pour le catalogue de produits/services (scope tenant + sub_tenant).
+     * Reutilisez les produits via `product_id` sur les lignes de facture/devis.
+     *
+     * @since 2.37.0
+     */
+    public function products(): ProductResource
+    {
+        return $this->products ??= new ProductResource($this->http);
+    }
+
+    /**
+     * Resource pour les categories du catalogue produits (scope tenant + sub_tenant).
+     *
+     * @since 2.37.0
+     */
+    public function productCategories(): ProductCategoryResource
+    {
+        return $this->productCategories ??= new ProductCategoryResource($this->http);
+    }
+
+    /**
      * Resource pour le registre des fournisseurs (suppliers).
      *
-     * Miroir cote emetteur du registre des acheteurs : memorise l'identite
-     * et l'adresse de facturation de vos partenaires (scope tenant + sub_tenant).
+     * Les fournisseurs sont derives automatiquement des factures recues
+     * cote serveur — la facture est la source de verite pour l'identite
+     * (name, siret, vat_number, legal_id, country, billing_address, is_individual).
+     *
+     * Seuls les champs d'enrichissement (email, phone, notes, metadata) sont
+     * modifiables via {@see SupplierResource::update()}.
+     *
+     * La creation manuelle et la suppression de fournisseurs ne sont plus
+     * supportees (API 405 depuis v3.0.0 — supprimez uniquement via l'interface
+     * admin si necessaire).
      *
      * @since 2.26.0
+     * @breaking 3.0.0 create() et delete() supprimes
      */
     public function suppliers(): SupplierResource
     {
