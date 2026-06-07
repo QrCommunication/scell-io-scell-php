@@ -349,6 +349,15 @@ class TenantInvoiceResource
         // Lignes
         $payload['lines'] = $data['lines'];
 
+        // Totaux niveau facture — REQUIS par le serveur (total_ht/total_tax/total_ttc).
+        // Sans ces cles, la creation echoue avec 422 ("Le total ... est obligatoire").
+        // ATTENTION : la cle TVA cote API est `total_tax` (et NON `total_tva`).
+        foreach (['total_ht', 'total_tax', 'total_ttc'] as $totalField) {
+            if (isset($data[$totalField])) {
+                $payload[$totalField] = $data[$totalField];
+            }
+        }
+
         // Champs optionnels
         if (isset($data['currency'])) {
             $payload['currency'] = $data['currency'];

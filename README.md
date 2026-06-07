@@ -510,14 +510,38 @@ $invoice = $api->tenantInvoices()->createForSubTenant($subTenantId, [
     'issue_date' => '2026-01-26',
     'seller' => [...],
     'buyer' => [...],
-    'lines' => [...],
+    'lines' => [
+        [
+            'description' => 'Prestation de service',
+            'quantity' => 1,
+            'unit_price' => 100.00,
+            'tax_rate' => 20.00,
+            'total_ht' => 100.00,
+            'total_ttc' => 120.00,
+        ],
+    ],
+    // Totaux niveau facture — OBLIGATOIRES.
+    // Attention : la cle TVA est `total_tax` (et NON `total_tva`).
+    'total_ht' => 100.00,
+    'total_tax' => 20.00,
+    'total_ttc' => 120.00,
 ]);
 
 // Soumettre pour traitement
 $api->tenantInvoices()->submit($invoiceId);
 
-// Factures directes (sans sub-tenant)
-$invoice = $api->directInvoices()->create([...]);
+// Factures directes (sans sub-tenant) — memes totaux obligatoires
+$invoice = $api->directInvoices()->create([
+    'direction' => 'outgoing',
+    'output_format' => 'facturx',
+    'issue_date' => '2026-01-26',
+    'seller' => [...],
+    'buyer' => [...],
+    'lines' => [...],
+    'total_ht' => 100.00,
+    'total_tax' => 20.00,
+    'total_ttc' => 120.00,
+]);
 
 // Operations en masse
 $api->directInvoices()->bulkCreate([...]);

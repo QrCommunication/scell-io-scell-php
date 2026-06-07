@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.36.0] - 2026-06-07
+
+### Fixed (totaux niveau facture — création tenant)
+- **`TenantInvoiceResource` et `TenantDirectInvoiceResource`** : les totaux niveau
+  facture (`total_ht`, `total_tax`, `total_ttc`) sont désormais **transmis** au
+  serveur lors de la création (`create()` / `createForSubTenant()`). Auparavant
+  l'allowlist de `normalizeCreatePayload` les ignorait silencieusement → la création
+  échouait côté serveur en **422** (« Le total … est obligatoire ») et les factures
+  restaient à l'état local sans jamais aboutir.
+- ⚠️ **La clé TVA côté API est `total_tax`** (et NON `total_tva`). Renseignez
+  `total_tax` dans le tableau de création, aux côtés de `total_ht` et `total_ttc`.
+
+### Notes
+- Rétro-compatible : si vous passiez déjà `total_ht` / `total_tax` / `total_ttc`
+  à la création, ils sont désormais honorés (avant : silencieusement ignorés).
+- `InvoiceResource` (API publique `sk_*`) forwardait déjà ces totaux : aucun impact.
+
 ## [2.35.0] - 2026-06-05
 
 ### Added (branding email — preview + logo-upload)
