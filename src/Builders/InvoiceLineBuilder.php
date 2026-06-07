@@ -63,6 +63,9 @@ class InvoiceLineBuilder
     private ?string $placeOfSupply = null;
     private ?string $overrideReason = null;
     private ?string $serviceNature = null;
+    private ?string $productId = null;
+    private ?bool $saveToCatalog = null;
+    private ?string $productCategoryId = null;
     private ?array $metadata = null;
 
     public function __construct()
@@ -194,6 +197,49 @@ class InvoiceLineBuilder
     }
 
     /**
+     * Pre-remplit la ligne depuis un produit du catalogue (champ top-level
+     * `product_id`). Le serveur recopie libelle, prix HT et taux de TVA par
+     * defaut du produit, completes/ecrases par les valeurs fournies ici.
+     *
+     * @param string $id UUID d'un produit du catalogue (scope tenant + sub_tenant)
+     * @since 2.37.0
+     */
+    public function withProductId(string $id): self
+    {
+        $clone = clone $this;
+        $clone->productId = $id;
+        return $clone;
+    }
+
+    /**
+     * Enregistre cette ligne comme produit du catalogue (upsert cote serveur,
+     * champ top-level `save_to_catalog`). Pratique pour capitaliser une ligne
+     * saisie a la volee dans le catalogue reutilisable.
+     *
+     * @since 2.37.0
+     */
+    public function withSaveToCatalog(bool $value = true): self
+    {
+        $clone = clone $this;
+        $clone->saveToCatalog = $value;
+        return $clone;
+    }
+
+    /**
+     * Range le produit enregistre via {@see withSaveToCatalog()} dans une
+     * categorie du catalogue (champ top-level `product_category_id`).
+     *
+     * @param string $id UUID d'une categorie du catalogue
+     * @since 2.37.0
+     */
+    public function withProductCategoryId(string $id): self
+    {
+        $clone = clone $this;
+        $clone->productCategoryId = $id;
+        return $clone;
+    }
+
+    /**
      * Fusionne des metadata supplementaires dans le payload.
      *
      * Les cles `category`, `exemption_reason` et `place_of_supply` derivees
@@ -243,6 +289,17 @@ class InvoiceLineBuilder
         }
         if ($this->overrideReason !== null) {
             $payload['vat_override_reason'] = $this->overrideReason;
+        }
+
+        // Champs catalogue — TOP-LEVEL (consommes par l'upsert produit serveur).
+        if ($this->productId !== null) {
+            $payload['product_id'] = $this->productId;
+        }
+        if ($this->saveToCatalog !== null) {
+            $payload['save_to_catalog'] = $this->saveToCatalog;
+        }
+        if ($this->productCategoryId !== null) {
+            $payload['product_category_id'] = $this->productCategoryId;
         }
 
         // metadata : donnees libres + serviceNature informatif (audit trail).

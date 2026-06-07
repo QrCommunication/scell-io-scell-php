@@ -3304,3 +3304,80 @@ DTOs disponibles :
 
 Enums : `RecurrenceIntervalUnit`, `RecurrenceEndMode`, `RecurringEmissionMode`,
 `RecurringProfileStatus`, `RecurringOccurrenceStatus`.
+
+## Catalogue produits/services — Products + ProductCategories (v2.37.0)
+
+Catalogue réutilisable scope `(tenant, sub_tenant)`, calqué sur le registre des
+acheteurs (`buyers()`). Réutilisez un produit pour pré-remplir une ligne de
+facture/devis sans resaisir libellé, prix HT et taux de TVA. Comme un buyer, le
+catalogue porte l'état *courant* de l'article — modifier un produit n'impacte
+pas les factures déjà émises (snapshot ISCA). Resources exposées sur
+`ScellClient` (Bearer) et `ScellApiClient` (`sk_*`/`pk_*`), à côté de `buyers()`.
+
+### Endpoints couverts
+
+| Endpoint | Méthode SDK |
+|----------|-------------|
+| `GET /api/v1/products` | `products()->list($params)` |
+| `POST /api/v1/products` | `products()->create($data)` |
+| `GET /api/v1/products/{id}` | `products()->get($id)` |
+| `PATCH /api/v1/products/{id}` | `products()->update($id, $data)` |
+| `PUT /api/v1/products/{id}` | `products()->replace($id, $data)` |
+| `DELETE /api/v1/products/{id}` | `products()->delete($id)` |
+| `GET /api/v1/product-categories` | `productCategories()->list($params)` |
+| `POST /api/v1/product-categories` | `productCategories()->create($data)` |
+| `GET /api/v1/product-categories/{id}` | `productCategories()->get($id)` |
+| `PATCH /api/v1/product-categories/{id}` | `productCategories()->update($id, $data)` |
+| `PUT /api/v1/product-categories/{id}` | `productCategories()->replace($id, $data)` |
+| `DELETE /api/v1/product-categories/{id}` | `productCategories()->delete($id)` |
+
+Filtres `products()->list()` : `q`, `revenue_category`, `product_category_id`,
+`is_active`, `per_page`, `page`. Filtres `productCategories()->list()` : `q`,
+`per_page`, `page`.
+
+```php
+use Scell\Sdk\ScellApiClient;
+use Scell\Sdk\Builders\InvoiceLineBuilder;
+
+$api = ScellApiClient::withApiKey('sk_live_...');
+
+// Créer une catégorie puis un produit rangé dedans
+$cat = $api->productCategories()->create(['name' => 'Conseil', 'color' => '#0066FF']);
+$product = $api->products()->create([
+    'name'                => 'Prestation de conseil',
+    'unit_price_ht'       => 800.00,
+    'default_tax_rate'    => 20.0,
+    'unit'                => 'HUR',
+    'product_category_id' => $cat->id,
+]);
+
+// Réutiliser le produit pour pré-remplir une ligne de facture
+$line = (new InvoiceLineBuilder())
+    ->withProductId($product->id)
+    ->withQuantity(2)
+    ->build();
+
+// Ou enregistrer une ligne saisie à la volée comme produit du catalogue
+$line = (new InvoiceLineBuilder())
+    ->withDescription('Audit ponctuel')
+    ->withUnitPrice(1500.00)
+    ->withTaxRate(20.0)
+    ->withSaveToCatalog()
+    ->withProductCategoryId($cat->id)
+    ->build();
+```
+
+Champs catalogue sur les lignes de facture/devis (tous optionnels, top-level) :
+`product_id` (pré-remplit la ligne), `save_to_catalog` (upsert produit),
+`product_category_id` (range le produit). Helpers `InvoiceLineBuilder` :
+`withProductId()`, `withSaveToCatalog()`, `withProductCategoryId()`.
+
+DTOs disponibles :
+- `Scell\Sdk\DTOs\Product` — `id`, `tenantId`, `subTenantId`, `productCategoryId`,
+  `name`, `description`, `sku`, `revenueCategory` (`goods`|`service`|`accommodation`|null),
+  `revenueCategoryLabel`, `unit` (défaut `C62`), `unitPriceHt`, `defaultTaxRate`,
+  `defaultDiscountRate`, `currency` (défaut `EUR`), `isActive`, `productCategory`
+  (imbriqué), `metadata`, `notes`, `createdAt`, `updatedAt`.
+- `Scell\Sdk\DTOs\ProductCategory` — `id`, `tenantId`, `subTenantId`, `name`,
+  `color`, `description`, `position`, `productsCount`, `metadata`, `createdAt`,
+  `updatedAt`.
