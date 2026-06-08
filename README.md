@@ -500,6 +500,14 @@ $subTenant = $api->subTenants()->update($subTenantId, [
 ]);
 ```
 
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `superpdpAuthorize(string $id)` | `POST /tenant/sub-tenants/:id/superpdp-authorize` | Démarrer un flow OAuth2 SuperPDP pour un sub-tenant sans access token (`{ authorize_url, state }`) |
+| `getResumeUrl(string $id)` | `POST /tenant/sub-tenants/:id/resume-url` | Régénérer une URL signée de reprise d'onboarding (7 jours) |
+| `superpdpDisconnect(string $id)` | `POST /tenant/sub-tenants/:id/superpdp-disconnect` | (v3.1.0) Révoquer les tokens SuperPDP du sub-tenant et repasser `onboarding_status` à `pending_superpdp`. Les factures déjà émises restent immuables (ISCA) ; les futures B2B passent en mode papier jusqu'à reconnexion. Retourne le `SubTenantSummary` |
+| `superpdpReconnect(string $id)` | `POST /tenant/sub-tenants/:id/superpdp-reconnect` | (v3.1.0) Déconnexion suivie d'une nouvelle `authorize_url` en un seul appel. Retourne `SuperPDPAuthorizeUrl` |
+| `superpdpWidgetToken(string $id, bool $reset = false)` | `POST /tenant/sub-tenants/:id/superpdp-widget-token` | (v3.1.0) Émettre un jeton signé (URL signée, scopée à UN sub-tenant, 24 h, anti-IDOR HMAC) pour le web component `<scell-onboarding mode="superpdp" resume-token="...">`. `$reset = true` déconnecte avant d'émettre le jeton |
+
 ### Factures pour les sub-tenants
 
 ```php

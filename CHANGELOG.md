@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.1.0] - 2026-06-08
+
+### Added — SuperPDP disconnect / reconnect (sub-tenants)
+- `subTenants()->superpdpDisconnect($id)` — disconnect SuperPDP for a sub-tenant: revoke the tokens server-side and reset `onboarding_status` to `pending_superpdp`. `POST /tenant/sub-tenants/{id}/superpdp-disconnect`. Already-issued invoices stay immutable (ISCA).
+- `subTenants()->superpdpReconnect($id)` — force a reconnect: disconnect (revoke + reset) then return a fresh prefilled authorize URL in one call. `POST /tenant/sub-tenants/{id}/superpdp-reconnect`.
+- `subTenants()->superpdpWidgetToken($id, $reset = false)` — mint a signed token (signed URL scoped to ONE sub-tenant, 24h TTL) for the `<scell-onboarding mode="superpdp" resume-token="...">` web component. `POST /tenant/sub-tenants/{id}/superpdp-widget-token`. Pass `$reset = true` to disconnect before minting (force reconnect via the embedded widget).
+
 ## [3.0.0] - 2026-06-07
 
 ### BREAKING CHANGES — Suppliers

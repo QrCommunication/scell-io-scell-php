@@ -233,6 +233,66 @@ class SubTenantResource
     }
 
     /**
+     * Deconnecte SuperPDP d'un sub-tenant : revoque les tokens chez SuperPDP et
+     * reinitialise `onboarding_status` a `pending_superpdp` (depuis v3.1.0).
+     *
+     * Les factures deja emises restent immuables (ISCA) ; les futures factures
+     * B2B retombent en transmission papier tant que SuperPDP n'est pas reconnecte.
+     * Pour relancer la connexion en un seul appel, voir {@see self::superpdpReconnect()}.
+     *
+     * POST /v1/tenant/sub-tenants/{id}/superpdp-disconnect
+     */
+    public function superpdpDisconnect(string $id): SubTenantSummary
+    {
+        $response = $this->http->post("tenant/sub-tenants/{$id}/superpdp-disconnect");
+
+        return SubTenantSummary::fromArray($response);
+    }
+
+    /**
+     * Force une reconnexion SuperPDP : deconnecte (revoque + reinitialise) puis
+     * genere une nouvelle URL OAuth authorize prefilled (depuis v3.1.0).
+     *
+     * Utile apres un KYB echoue (`superpdp_failed`) ou un changement de societe.
+     *
+     * POST /v1/tenant/sub-tenants/{id}/superpdp-reconnect
+     *
+     * @example
+     * ```php
+     * $authorize = $api->subTenants()->superpdpReconnect($subTenantId);
+     * header('Location: ' . $authorize->authorizeUrl);
+     * ```
+     */
+    public function superpdpReconnect(string $id): SuperPDPAuthorizeUrl
+    {
+        $response = $this->http->post("tenant/sub-tenants/{$id}/superpdp-reconnect");
+
+        return SuperPDPAuthorizeUrl::fromArray($response);
+    }
+
+    /**
+     * Genere un jeton signe (URL signee, scopee a UN sub-tenant, TTL 24h) a
+     * passer au web component `<scell-onboarding mode="superpdp" resume-token="...">`
+     * (depuis v3.1.0). Le widget ouvre alors UNIQUEMENT l'etape SuperPDP sans
+     * exposer l'id du sub-tenant (anti-IDOR : la signature HMAC fait foi).
+     *
+     * @param bool $reset Si true, deconnecte (revoque + reset) le sub-tenant
+     *                    AVANT d'emettre le jeton — voie "forcer une reconnexion"
+     *                    via le widget.
+     *
+     * POST /v1/tenant/sub-tenants/{id}/superpdp-widget-token
+     *
+     * @return array{resume_token: string, expires_at: string}
+     */
+    public function superpdpWidgetToken(string $id, bool $reset = false): array
+    {
+        return $this->http->post(
+            "tenant/sub-tenants/{$id}/superpdp-widget-token",
+            $reset ? ['reset' => true] : [],
+        );
+    }
+
+    /**
      * Jauges de seuils micro-entrepreneur (FR) d'un sous-tenant.
      *
      * Retourne le CA HT cumule par categorie face aux seuils applicables

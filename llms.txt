@@ -516,6 +516,17 @@ try {
 $resume = $api->subTenants()->getResumeUrl($subTenantId);
 // $resume->resumeUrl : string
 // $resume->expiresAt : DateTimeImmutable
+
+// Disconnect SuperPDP (revoke tokens + reset onboarding_status to pending) — v3.1.0
+$api->subTenants()->superpdpDisconnect($subTenantId);
+
+// Force a reconnect (disconnect + fresh authorize URL in one call) — v3.1.0
+$authorize = $api->subTenants()->superpdpReconnect($subTenantId);
+// header('Location: ' . $authorize->authorizeUrl);
+
+// Mint a signed token for the <scell-onboarding mode="superpdp"> web component — v3.1.0
+// Pass true to disconnect before minting (force reconnect via the embedded widget).
+['resume_token' => $token] = $api->subTenants()->superpdpWidgetToken($subTenantId, true);
 ```
 
 ## RecommendedAction (i18n FR/EN)
