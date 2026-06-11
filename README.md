@@ -930,6 +930,17 @@ $upload = $api->branding()->logoUploadUrlTenant('image/png');
 // PUT $upload['url'] avec le binaire du logo
 // Puis confirmer le logo_url via updateTenant(['logo_url' => $upload['public_url']])
 
+// OU : upload DIRECT multipart en un seul appel (v3.4.0)
+// Formats : jpeg, png, webp, svg/svgz. Max 2 Mo.
+$branding = $api->branding()->uploadLogoTenant('/path/to/logo.png');
+$branding = $api->branding()->uploadLogoSubTenant($subTenantId, '/path/to/logo.svg');
+
+// Activer/desactiver le branding e-mail (v3.4.0)
+// false = les e-mails sortent avec le branding par defaut du canal
+$branding = $api->branding()->updateTenant(['brand_email_enabled' => false]);
+// Pied de page calcule depuis la societe (lecture seule, utilise si email_footer vide)
+echo $branding->computedEmailFooter;
+
 // Branding d'un sub-tenant
 $branding = $api->branding()->getSubTenant($subTenantId);
 $branding = $api->branding()->updateSubTenant($subTenantId, [
@@ -944,6 +955,30 @@ $upload = $api->branding()->logoUploadUrlSubTenant($subTenantId, 'image/jpeg');
 // Ideal a injecter dans un <iframe srcdoc="..."> pour une previsualisation live.
 $html    = $api->branding()->previewTenant();              // string (HTML)
 $subHtml = $api->branding()->previewSubTenant($subTenantId);
+
+// Apercu avec overrides NON persistes (v3.4.0) — previsualiser un branding
+// avant de l'enregistrer
+$html = $api->branding()->previewTenant([
+    'brand_primary_color'   => '#e63946',
+    'brand_email_footer'    => 'Footer de test',
+    'brand_email_signature' => 'Signature de test',
+    'brand_logo_url'        => 'https://cdn.example.com/logo.png',
+]);
+
+// Deriver les couleurs du template de facture par defaut depuis le logo e-mail (v3.4.0)
+// 404 si aucun logo e-mail ; 422 si logo inaccessible ou couleurs trop neutres
+$tpl = $api->invoiceTemplates()->deriveColorsFromEmailLogo();
+echo "{$tpl->primaryColor} / {$tpl->accentColor}";
+
+// Apercu HTML non persiste d'un document en cours de saisie (v3.4.0)
+// Rendu avec le vrai template + branding + mentions de la Company emettrice
+$html = $api->documents()->preview([
+    'type' => 'invoice', // 'invoice' | 'credit_note' | 'quote'
+    'buyer' => ['name' => 'Client SA'],
+    'lines' => [
+        ['description' => 'Prestation', 'quantity' => 1, 'unit_price' => 1000.00, 'tax_rate' => 20.0],
+    ],
+]);
 
 // Envoyer une facture par email (utilise le branding tenant si isReady())
 $result = $api->invoices()->sendByEmail($invoiceId, [
@@ -1113,7 +1148,9 @@ composer check
 | `productCategories()` | Categories du catalogue produits (CRUD) |
 | `balance()` | Consultation du solde |
 | `webhooks()` | Gestion des webhooks |
-| `branding()` | Configuration marque tenant (logo, couleur, textes emails) |
+| `branding()` | Configuration marque tenant (logo, couleur, textes emails, upload direct, apercu avec overrides) |
+| `documents()` | Apercu HTML non persiste d'un document en cours de saisie |
+| `invoiceTemplates()` | Templates de personnalisation factures/avoirs (CRUD, default, logo, derive-colors) |
 
 ### ScellApiClient (API Key)
 
@@ -1132,7 +1169,9 @@ composer check
 | `quotes()` | Devis (builder, send, convert, echeancier, paymentSchedule()) |
 | `products()` | Catalogue produits/services (CRUD, scope tenant + sub_tenant) |
 | `productCategories()` | Categories du catalogue produits (CRUD) |
-| `branding()` | Configuration marque tenant + sub-tenant (logo, couleur, emails) |
+| `branding()` | Configuration marque tenant + sub-tenant (logo, couleur, emails, upload direct, apercu avec overrides) |
+| `documents()` | Apercu HTML non persiste d'un document en cours de saisie |
+| `invoiceTemplates()` | Templates de personnalisation factures/avoirs (CRUD, default, logo, derive-colors) |
 
 ### ScellTenantClient (Multi-Tenant Partner)
 

@@ -120,4 +120,29 @@ class InvoiceTemplateResource
 
         return InvoiceTemplate::fromArray($response['data']);
     }
+
+    /**
+     * Deduit les couleurs primaire/accent du logo e-mail du tenant et les
+     * applique au template de facture par defaut (cree a la volee si absent).
+     *
+     * Erreurs API possibles :
+     * - 404 si aucun logo e-mail n'est configure sur le tenant.
+     * - 422 si le logo est inaccessible ou si ses couleurs sont trop neutres.
+     *
+     * @return InvoiceTemplate Le template par defaut avec les couleurs derivees
+     *
+     * @example
+     * ```php
+     * $tpl = $client->invoiceTemplates()->deriveColorsFromEmailLogo();
+     * echo $tpl->primaryColor; // ex: '#0F4C81'
+     * ```
+     *
+     * @since 3.4.0
+     */
+    public function deriveColorsFromEmailLogo(): InvoiceTemplate
+    {
+        $response = $this->http->post('invoice-templates/derive-colors-from-email-logo');
+
+        return InvoiceTemplate::fromArray($response['data']);
+    }
 }

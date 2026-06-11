@@ -1,5 +1,109 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 2.10.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 3.4.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+
+## v3.4.0 (2026-06-11) — Apercu de documents + upload direct logo branding + derive-colors
+
+Release MINOR. Mirror du lot backend branding/apercus du 2026-06-11
+(groupe api.flexible : utilisable avec `sk_*` / `pk_*`).
+
+### Nouvelle ressource `documents()` — apercu HTML non persiste
+
+`POST /documents/preview` : apercu HTML d'un document en cours de saisie
+(facture, avoir, devis), rendu avec le vrai template + branding + mentions
+de la Company emettrice. Rien n'est persiste. Expose sur `ScellClient` et
+`ScellApiClient`.
+
+```php
+$html = $client->documents()->preview([
+    'type' => 'invoice', // requis : 'invoice' | 'credit_note' | 'quote'
+    'document_number' => 'FA-2026-0042',          // optionnel, <= 100
+    'buyer' => [                                   // optionnel
+        'name' => 'Client SA',
+        'siret' => '98765432109876',
+        'vat_number' => 'FR12345678901',
+        'email' => 'compta@client.fr',
+        'phone' => '+33100000000',
+        'is_individual' => false,
+        'address' => ['line1' => '1 rue de la Paix', 'line2' => null,
+                      'postal_code' => '75002', 'city' => 'Paris', 'country' => 'FR'],
+    ],
+    'lines' => [                                   // optionnel, max 200
+        ['description' => 'Prestation', 'quantity' => 1,
+         'unit_price' => 1000.00, 'tax_rate' => 20.0],
+    ],
+    'issue_date' => '2026-06-11',                  // Y-m-d
+    'due_date' => '2026-07-11',                    // Y-m-d
+    'currency' => 'EUR',                           // 3 chars
+    'notes' => '...',                              // <= 2000
+    'payment_terms' => '...',                      // <= 2000
+]);
+// $html est une string `text/html` brute — ideale en <iframe srcdoc="...">.
+// 422 si payload invalide.
+```
+
+### Branding — upload DIRECT du logo e-mail (multipart)
+
+Alternative en un seul appel au flux presigned (`logoUploadUrlTenant()` +
+PUT S3 + `updateTenant()`). Champ multipart `logo`, mimes
+jpeg/png/webp/svg/svgz, max 2 Mo. Reponse = objet Branding A PLAT.
+
+```php
+// Tenant master — POST /branding/tenant/logo
+$branding = $api->branding()->uploadLogoTenant('/path/to/logo.png');
+
+// Sub-tenant (404 anti-IDOR) — POST /branding/sub-tenants/{id}/logo
+$branding = $api->branding()->uploadLogoSubTenant($subTenantId, $fp, 'logo.svg');
+```
+
+### Branding — overrides d'apercu NON persistes
+
+`GET /branding/tenant/preview` et `GET /branding/sub-tenants/{id}/preview`
+acceptent des query params d'override non persistes (previsualiser un
+branding AVANT de l'enregistrer) :
+
+```php
+$html = $api->branding()->previewTenant([
+    'brand_primary_color'   => '#e63946',      // #RRGGBB
+    'brand_email_footer'    => '...',          // <= 2000
+    'brand_email_signature' => '...',          // <= 1000
+    'brand_logo_url'        => 'https://...',  // <= 2048
+]);
+$html = $api->branding()->previewSubTenant($subTenantId, [...memes cles...]);
+```
+
+### Branding — nouveaux champs DTO
+
+- `Branding::$brandEmailEnabled` (`?bool`) — modifiable via
+  `updateTenant()`/`updateSubTenant()` avec `brand_email_enabled`.
+  `false` = les e-mails sortent avec le branding par defaut du canal.
+- `Branding::$computedEmailFooter` (`?string`, LECTURE SEULE) — pied de
+  page calcule depuis la societe, utilise quand `email_footer` est vide.
+
+### Invoice templates — derive-colors-from-email-logo + is_enabled
+
+```php
+// POST /invoice-templates/derive-colors-from-email-logo (sans body)
+// Deduit primary/accent du logo e-mail du tenant et les applique au
+// template de facture par defaut (cree a la volee si absent).
+// 404 si aucun logo e-mail ; 422 si logo inaccessible ou couleurs trop neutres.
+$tpl = $client->invoiceTemplates()->deriveColorsFromEmailLogo();
+```
+
+- `InvoiceTemplate::$isEnabled` (`?bool`, defaut `true`) — `false` =
+  template ignore par la cascade de resolution (repli sur le template
+  systeme), configuration conservee. Accepte en create/update via
+  `is_enabled`.
+- `ScellClient` / `ScellApiClient` exposent desormais
+  `invoiceTemplates(): InvoiceTemplateResource` (la ressource n'etait
+  cablee sur aucun client auparavant).
+
+### Fixes
+
+- `HttpClient::SDK_VERSION` bumpee `'3.1.0'` → `'3.4.0'` (les releases
+  3.2.0/3.3.0 avaient oublie le bump — User-Agent errone).
+- `postMultipart()` envoyait `Content-Type: application/json` au lieu de
+  `multipart/form-data; boundary=...` (headers par defaut ecrasaient le
+  header conditionnel Guzzle) — affectait `invoiceTemplates()->uploadLogo()`.
 
 ## v2.10.0 (2026-05-15) — Fix 500 sur fiscal/closings + champ ots_proof_base64
 

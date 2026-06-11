@@ -10,7 +10,9 @@ use Scell\Sdk\Resources\BrandingResource;
 use Scell\Sdk\Resources\BuyerResource;
 use Scell\Sdk\Resources\CompanyResource;
 use Scell\Sdk\Resources\CreditPacksResource;
+use Scell\Sdk\Resources\DocumentResource;
 use Scell\Sdk\Resources\InvoiceResource;
+use Scell\Sdk\Resources\InvoiceTemplateResource;
 use Scell\Sdk\Resources\ProductCategoryResource;
 use Scell\Sdk\Resources\ProductResource;
 use Scell\Sdk\Resources\SignatureResource;
@@ -67,6 +69,8 @@ class ScellClient
     private ?CreditNoteResource $creditNotes = null;
     private ?QuoteResource $quotes = null;
     private ?BrandingResource $branding = null;
+    private ?DocumentResource $documents = null;
+    private ?InvoiceTemplateResource $invoiceTemplates = null;
     private ?CreditPacksResource $creditPacks = null;
     private ?ReferenceResource $reference = null;
     private ?RecurringInvoiceResource $recurringInvoices = null;
@@ -232,6 +236,31 @@ class ScellClient
     public function branding(): BrandingResource
     {
         return $this->branding ??= new BrandingResource($this->http);
+    }
+
+    /**
+     * Resource pour les apercus de documents (factures, avoirs, devis).
+     *
+     * Genere un apercu HTML NON persiste d'un document en cours de saisie,
+     * rendu avec le vrai template + branding + mentions de la Company
+     * emettrice.
+     *
+     * @since 3.4.0
+     */
+    public function documents(): DocumentResource
+    {
+        return $this->documents ??= new DocumentResource($this->http);
+    }
+
+    /**
+     * Resource pour les templates de personnalisation factures / avoirs
+     * (CRUD, default, upload logo, derive-colors-from-email-logo).
+     *
+     * @since 3.4.0
+     */
+    public function invoiceTemplates(): InvoiceTemplateResource
+    {
+        return $this->invoiceTemplates ??= new InvoiceTemplateResource($this->http);
     }
 
     /**

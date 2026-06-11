@@ -133,6 +133,83 @@ class BrandingResource
     }
 
     /**
+     * Upload DIRECT du logo e-mail du tenant master (multipart).
+     *
+     * Alternative en un seul appel au flux presigned
+     * {@see logoUploadUrlTenant()} : le binaire est envoye directement a
+     * l'API qui le stocke et persiste le `logo_url` resultant.
+     *
+     * Formats acceptes : jpeg, png, webp, svg/svgz. Max 2 Mo.
+     *
+     * @param resource|string $logo Resource (fopen) ou path (string) du fichier
+     * @param string|null $filename Filename optionnel (default: extrait du path)
+     * @return Branding La configuration de marque avec le nouveau logo_url
+     *
+     * @example
+     * ```php
+     * // Depuis un path
+     * $branding = $api->branding()->uploadLogoTenant('/path/to/logo.png');
+     *
+     * // Depuis une resource
+     * $fp = fopen('/path/to/logo.svg', 'rb');
+     * $branding = $api->branding()->uploadLogoTenant($fp, 'logo.svg');
+     * ```
+     *
+     * @since 3.4.0
+     */
+    public function uploadLogoTenant($logo, ?string $filename = null): Branding
+    {
+        // Si on recoit un path string, ouvrir la resource
+        if (is_string($logo)) {
+            $filename ??= basename($logo);
+            $logo = fopen($logo, 'rb');
+            if ($logo === false) {
+                throw new \RuntimeException("Impossible d'ouvrir le fichier logo");
+            }
+        }
+
+        $response = $this->http->postMultipart('branding/tenant/logo', [[
+            'name' => 'logo',
+            'contents' => $logo,
+            'filename' => $filename ?? 'logo',
+        ]]);
+
+        return Branding::fromArray($response['data'] ?? $response);
+    }
+
+    /**
+     * Upload DIRECT du logo e-mail d'un sub-tenant (multipart).
+     *
+     * Le sub-tenant doit appartenir au tenant courant (404 anti-IDOR cote
+     * serveur). Memes formats et limites que {@see uploadLogoTenant()}.
+     *
+     * @param resource|string $logo Resource (fopen) ou path (string) du fichier
+     * @param string|null $filename Filename optionnel (default: extrait du path)
+     * @return Branding La configuration de marque avec le nouveau logo_url
+     *
+     * @since 3.4.0
+     */
+    public function uploadLogoSubTenant(string $subTenantId, $logo, ?string $filename = null): Branding
+    {
+        // Si on recoit un path string, ouvrir la resource
+        if (is_string($logo)) {
+            $filename ??= basename($logo);
+            $logo = fopen($logo, 'rb');
+            if ($logo === false) {
+                throw new \RuntimeException("Impossible d'ouvrir le fichier logo");
+            }
+        }
+
+        $response = $this->http->postMultipart("branding/sub-tenants/{$subTenantId}/logo", [[
+            'name' => 'logo',
+            'contents' => $logo,
+            'filename' => $filename ?? 'logo',
+        ]]);
+
+        return Branding::fromArray($response['data'] ?? $response);
+    }
+
+    /**
      * Retourne l'apercu de l'email brande du tenant courant, tel qu'il
      * apparaitra au destinataire — AVANT tout envoi.
      *
@@ -140,11 +217,22 @@ class BrandingResource
      * un `<iframe srcdoc="...">` pour une previsualisation live. Envoyer un
      * header `Accept: application/pdf` pour obtenir le rendu PDF.
      *
+     * Depuis la v3.4.0, des overrides NON persistes peuvent etre passes en
+     * query string pour previsualiser un branding avant de l'enregistrer :
+     * `brand_primary_color` (#RRGGBB), `brand_email_footer` (<= 2000),
+     * `brand_email_signature` (<= 1000), `brand_logo_url` (<= 2048).
+     *
+     * @param array{
+     *     brand_primary_color?: string,
+     *     brand_email_footer?: string,
+     *     brand_email_signature?: string,
+     *     brand_logo_url?: string
+     * } $overrides Overrides de previsualisation (non persistes)
      * @return string Contenu brut (HTML par defaut, ou PDF selon le header Accept)
      */
-    public function previewTenant(): string
+    public function previewTenant(array $overrides = []): string
     {
-        return $this->http->getRaw('branding/tenant/preview');
+        return $this->http->getRaw('branding/tenant/preview', $overrides);
     }
 
     /**
@@ -153,12 +241,19 @@ class BrandingResource
      * appartenir au tenant courant (anti-IDOR cote serveur).
      *
      * Memes regles de format que {@see previewTenant()} (HTML par defaut,
-     * PDF via `Accept: application/pdf`).
+     * PDF via `Accept: application/pdf`) et memes overrides de
+     * previsualisation NON persistes (depuis v3.4.0).
      *
+     * @param array{
+     *     brand_primary_color?: string,
+     *     brand_email_footer?: string,
+     *     brand_email_signature?: string,
+     *     brand_logo_url?: string
+     * } $overrides Overrides de previsualisation (non persistes)
      * @return string Contenu brut (HTML par defaut, ou PDF selon le header Accept)
      */
-    public function previewSubTenant(string $subTenantId): string
+    public function previewSubTenant(string $subTenantId, array $overrides = []): string
     {
-        return $this->http->getRaw("branding/sub-tenants/{$subTenantId}/preview");
+        return $this->http->getRaw("branding/sub-tenants/{$subTenantId}/preview", $overrides);
     }
 }

@@ -45,6 +45,14 @@ readonly class InvoiceTemplate
         public ?array $metadata,
         public ?DateTimeImmutable $createdAt,
         public ?DateTimeImmutable $updatedAt,
+        /**
+         * Template actif dans la cascade de resolution (defaut `true`).
+         * `false` = template ignore par la cascade (repli sur le template
+         * systeme), sa configuration est conservee. Accepte en create/update.
+         *
+         * @since 3.4.0
+         */
+        public ?bool $isEnabled = true,
     ) {}
 
     /**
@@ -74,6 +82,7 @@ readonly class InvoiceTemplate
             metadata: $data['metadata'] ?? null,
             createdAt: isset($data['created_at']) ? new DateTimeImmutable($data['created_at']) : null,
             updatedAt: isset($data['updated_at']) ? new DateTimeImmutable($data['updated_at']) : null,
+            isEnabled: (bool) ($data['is_enabled'] ?? true),
         );
     }
 

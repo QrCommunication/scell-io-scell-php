@@ -21,7 +21,7 @@ use Scell\Sdk\Exceptions\ScellException;
  */
 class HttpClient
 {
-    public const SDK_VERSION = '3.1.0';
+    public const SDK_VERSION = '3.4.0';
     private Client $client;
     private string $baseUrl;
     private ?string $bearerToken = null;
@@ -251,9 +251,18 @@ class HttpClient
         // Normalize path: ltrim removes leading slash, then re-add for consistency with baseUrl
         $url = $this->baseUrl . '/' . ltrim($path, '/');
 
+        $headers = $this->getDefaultHeaders();
+
+        // Multipart : ne PAS forcer `Content-Type: application/json`, sinon
+        // Guzzle ne pose jamais `multipart/form-data; boundary=...` (header
+        // conditionnel) et le serveur ne parse pas les fichiers uploades.
+        if (isset($options[RequestOptions::MULTIPART])) {
+            unset($headers['Content-Type']);
+        }
+
         $options[RequestOptions::HEADERS] = array_merge(
             $options[RequestOptions::HEADERS] ?? [],
-            $this->getDefaultHeaders()
+            $headers
         );
 
         try {

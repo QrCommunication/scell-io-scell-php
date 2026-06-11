@@ -2,6 +2,72 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.0] - 2026-06-11
+
+### Added — Aperçu de documents non persisté
+
+- Nouvelle ressource `documents()` (exposée sur `ScellClient` et
+  `ScellApiClient`) avec `preview(array $payload): string` — génère un
+  aperçu HTML NON persisté d'un document en cours de saisie (facture,
+  avoir ou devis), rendu avec le vrai template + branding + mentions de
+  la Company émettrice. `POST /documents/preview` (groupe api.flexible,
+  `sk_*` / `pk_*`). Champs : `type` (requis, `invoice`|`credit_note`|`quote`),
+  `document_number`, `buyer` (+ `address`), `lines` (max 200),
+  `issue_date`, `due_date`, `currency`, `notes`, `payment_terms`.
+  Réponse `text/html` brute — idéale dans un `<iframe srcdoc="...">`.
+
+### Added — Branding : upload direct du logo + overrides d'aperçu
+
+- `branding()->uploadLogoTenant($logo, $filename = null): Branding` —
+  upload DIRECT multipart du logo e-mail du tenant (champ `logo`, mimes
+  jpeg/png/webp/svg/svgz, max 2 Mo). `POST /branding/tenant/logo`.
+  Alternative en un seul appel au flux presigned `logoUploadUrlTenant()`.
+  Accepte un path (string) ou une resource (fopen), comme
+  `invoiceTemplates()->uploadLogo()`. La réponse (objet Branding à plat)
+  hydrate le DTO `Branding`.
+- `branding()->uploadLogoSubTenant($subTenantId, $logo, $filename = null): Branding`
+  — idem pour un sub-tenant (404 anti-IDOR).
+  `POST /branding/sub-tenants/{id}/logo`.
+- `branding()->previewTenant(array $overrides = [])` et
+  `previewSubTenant($subTenantId, array $overrides = [])` acceptent des
+  overrides de prévisualisation NON persistés passés en query string :
+  `brand_primary_color` (#RRGGBB), `brand_email_footer` (≤ 2000),
+  `brand_email_signature` (≤ 1000), `brand_logo_url` (≤ 2048).
+- DTO `Branding` : nouveaux champs `brandEmailEnabled` (`?bool`,
+  modifiable via `updateTenant()`/`updateSubTenant()` avec
+  `brand_email_enabled` ; `false` = e-mails avec le branding par défaut
+  du canal) et `computedEmailFooter` (`?string`, LECTURE SEULE — pied de
+  page calculé depuis la société, utilisé quand `email_footer` est vide).
+
+### Added — Invoice templates : dérivation des couleurs + is_enabled
+
+- `invoiceTemplates()->deriveColorsFromEmailLogo(): InvoiceTemplate` —
+  déduit les couleurs primaire/accent du logo e-mail du tenant et les
+  applique au template de facture par défaut (créé à la volée si absent).
+  `POST /invoice-templates/derive-colors-from-email-logo` (sans body).
+  Erreurs : 404 si aucun logo e-mail, 422 si logo inaccessible ou
+  couleurs trop neutres.
+- DTO `InvoiceTemplate` : nouveau champ `isEnabled` (`?bool`, défaut
+  `true` ; `false` = template ignoré par la cascade de résolution →
+  repli sur le template système, configuration conservée). Accepté en
+  `create()` / `update()` via `is_enabled`.
+- `ScellClient` et `ScellApiClient` exposent désormais
+  `invoiceTemplates(): InvoiceTemplateResource` — la ressource existait
+  depuis la 1.14.0 mais n'était câblée sur aucun client (il fallait
+  l'instancier manuellement avec `getHttpClient()`).
+
+### Fixed
+
+- `HttpClient::SDK_VERSION` bumpée de `'3.1.0'` à `'3.4.0'` — les
+  releases 3.2.0 et 3.3.0 avaient oublié ce bump (le header `User-Agent`
+  annonçait toujours `Scell-PHP-SDK/3.1.0`).
+- `HttpClient::postMultipart()` envoyait `Content-Type: application/json`
+  au lieu de `multipart/form-data; boundary=...` : les headers par défaut
+  écrasaient le header conditionnel posé par Guzzle pour les
+  `MultipartStream`, et le serveur ne parsait pas le fichier uploadé.
+  Affectait `invoiceTemplates()->uploadLogo()` (et les nouvelles méthodes
+  `uploadLogoTenant()` / `uploadLogoSubTenant()`).
+
 ## [3.3.0] - 2026-06-11
 
 ### Added — Invoice::$subTenantId

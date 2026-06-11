@@ -31,6 +31,20 @@ final readonly class Branding
         /** ID de l'entite concernee (tenant_id ou sub_tenant_id). */
         public ?string $entityId,
         public ?DateTimeImmutable $updatedAt,
+        /**
+         * Active/desactive le branding e-mail (modifiable via update*()).
+         * `false` = les e-mails sortent avec le branding par defaut du canal.
+         *
+         * @since 3.4.0
+         */
+        public ?bool $brandEmailEnabled = null,
+        /**
+         * Pied de page e-mail calcule depuis la societe emettrice (LECTURE
+         * SEULE). Utilise par l'API quand `email_footer` est vide.
+         *
+         * @since 3.4.0
+         */
+        public ?string $computedEmailFooter = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -46,6 +60,10 @@ final readonly class Branding
             updatedAt: isset($data['updated_at'])
                 ? new DateTimeImmutable($data['updated_at'])
                 : null,
+            brandEmailEnabled: isset($data['brand_email_enabled'])
+                ? (bool) $data['brand_email_enabled']
+                : null,
+            computedEmailFooter: $data['computed_email_footer'] ?? null,
         );
     }
 
