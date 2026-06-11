@@ -180,6 +180,18 @@ readonly class Invoice
          * Disponible depuis SDK 2.25.0 (API 2026-05-28).
          */
         public ?string $paymentMeansText = null,
+        /**
+         * UUID du sub-tenant proprietaire de la facture (via sa company).
+         * Expose par l'API sur la surface tenant des factures ENTRANTES
+         * (index/show/actions) pour permettre aux plateformes
+         * multi-sub-tenants d'autoriser leurs utilisateurs finaux
+         * (garde IDOR cote consommateur : un tenant = N sub-tenants).
+         * NULL sur les reponses qui n'exposent pas la company
+         * (dashboard, factures sortantes).
+         *
+         * Disponible depuis SDK 3.3.0 (API 2026-06-11).
+         */
+        public ?string $subTenantId = null,
     ) {}
 
     /**
@@ -262,6 +274,9 @@ readonly class Invoice
                 : null,
             paymentMeansText: isset($data['payment_means_text']) && is_string($data['payment_means_text'])
                 ? $data['payment_means_text']
+                : null,
+            subTenantId: isset($data['sub_tenant_id']) && is_string($data['sub_tenant_id'])
+                ? $data['sub_tenant_id']
                 : null,
         );
     }

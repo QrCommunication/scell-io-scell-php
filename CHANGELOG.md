@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.3.0] - 2026-06-11
+
+### Added — Invoice::$subTenantId
+- `Invoice::$subTenantId` (`?string`, défaut `null`) — UUID du sub-tenant
+  propriétaire, exposé par l'API (2026-06-11) sur la surface tenant des
+  factures **entrantes** (index/show/actions). Permet aux plateformes
+  multi-sub-tenants d'autoriser leurs utilisateurs finaux contre le
+  propriétaire de la facture (garde IDOR côté consommateur : un tenant
+  = N sub-tenants). `null` sur les réponses dashboard et les factures
+  sortantes.
+
 ## [3.2.0] - 2026-06-11
 
 ### Added — Incoming invoices download
