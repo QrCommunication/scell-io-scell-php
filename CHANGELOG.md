@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.2.0] - 2026-06-11
+
+### Added — Incoming invoices download
+- `incomingInvoices()->download($invoiceId, $format = 'pdf')` — télécharge le
+  fichier d'une facture entrante (fournisseur) : `pdf` (Factur-X reçu) ou
+  `xml` (CII/UBL d'origine). Retourne le contenu binaire brut.
+  `GET /tenant/invoices/incoming/{id}/download`.
+
+### Fixed — server-side
+- `incomingInvoices()->dispute()` (publié en 2.24.0) pointait sur une route
+  inexistante côté API (404 systématique). La route
+  `POST /tenant/invoices/incoming/{id}/dispute` existe désormais côté serveur ;
+  le vocabulaire `DisputeType` du SDK (`amount_dispute`, `quality_dispute`,
+  `delivery_dispute`, `other`) est accepté tel quel. Aucun changement SDK requis.
+
 ## [3.1.0] - 2026-06-08
 
 ### Added — SuperPDP disconnect / reconnect (sub-tenants)

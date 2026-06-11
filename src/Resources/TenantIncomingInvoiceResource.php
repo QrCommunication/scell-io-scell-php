@@ -368,6 +368,39 @@ class TenantIncomingInvoiceResource
     }
 
     /**
+     * Telecharge le fichier d'une facture entrante (PDF ou XML)
+     * (endpoint `GET /tenant/invoices/incoming/{id}/download`).
+     *
+     * @param string $invoiceId UUID de la facture entrante
+     * @param string $format Format du fichier : `pdf` (defaut, le PDF Factur-X
+     *                       recu du fournisseur) ou `xml` (le XML structure
+     *                       CII/UBL d'origine)
+     *
+     * @return string Contenu binaire du fichier
+     *
+     * @throws \Scell\Sdk\Exceptions\NotFoundException 404 si la facture ou le fichier n'existe pas
+     * @throws \Scell\Sdk\Exceptions\ValidationException 422 si le format est invalide
+     *
+     * @example
+     * ```php
+     * // Telecharger le PDF
+     * $pdf = $resource->download('invoice-uuid');
+     * file_put_contents('facture-fournisseur.pdf', $pdf);
+     *
+     * // Telecharger le XML d'origine
+     * $xml = $resource->download('invoice-uuid', 'xml');
+     * ```
+     *
+     * @since 3.2.0
+     */
+    public function download(string $invoiceId, string $format = 'pdf'): string
+    {
+        return $this->http->getRaw("tenant/invoices/incoming/{$invoiceId}/download", [
+            'format' => $format,
+        ]);
+    }
+
+    /**
      * Normalise les filtres de liste.
      *
      * @param array<string, mixed> $filters
