@@ -378,7 +378,7 @@ class TenantIncomingInvoiceResource
      *
      * @return string Contenu binaire du fichier
      *
-     * @throws \Scell\Sdk\Exceptions\NotFoundException 404 si la facture ou le fichier n'existe pas
+     * @throws \Scell\Sdk\Exceptions\ScellException 404 si la facture ou le fichier n'existe pas
      * @throws \Scell\Sdk\Exceptions\ValidationException 422 si le format est invalide
      *
      * @example

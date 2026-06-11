@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.4.1] - 2026-06-11
+
+### Fixed
+
+- PHPDoc `@throws` de `TenantIncomingInvoiceResource::download()` : la classe
+  `Scell\Sdk\Exceptions\NotFoundException` n'existe pas dans le SDK (introduite
+  par erreur en 3.2.0) — remplacée par `ScellException` (convention du SDK pour
+  les 404). Corrige la seule erreur PHPStan restante (`throws.notThrowable`).
+
 ## [3.4.0] - 2026-06-11
 
 ### Added — Aperçu de documents non persisté
