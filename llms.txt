@@ -1,5 +1,5 @@
 # scell/sdk — PHP SDK for Scell.io
-> Version: 3.4.0 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
+> Version: 3.4.1 | License: MIT | PHP >= 8.2 | Guzzle 7 | PSR HTTP Message 1/2
 
 ## v3.4.0 (2026-06-11) — Apercu de documents + upload direct logo branding + derive-colors
 
