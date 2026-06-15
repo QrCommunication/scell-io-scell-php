@@ -304,17 +304,43 @@ class ScellClientTest extends TestCase
         $invoiceEvents = WebhookEvent::forDomain('invoice');
         $signatureEvents = WebhookEvent::forDomain('signature');
         $balanceEvents = WebhookEvent::forDomain('balance');
+        $onboardingEvents = WebhookEvent::forDomain('onboarding');
+        $recurringEvents = WebhookEvent::forDomain('recurring_invoice');
+        $thresholdEvents = WebhookEvent::forDomain('subtenant');
 
-        $this->assertCount(11, $invoiceEvents); // 6 sortantes + 5 entrantes (including paid)
+        $this->assertCount(12, $invoiceEvents); // 6 sortantes + 6 entrantes (incl. validated + paid)
         $this->assertCount(7, $signatureEvents);
         $this->assertCount(2, $balanceEvents);
+        $this->assertCount(4, $onboardingEvents);
+        $this->assertCount(4, $recurringEvents);
+        $this->assertCount(4, $thresholdEvents);
 
         $allValues = WebhookEvent::values();
-        $this->assertCount(20, $allValues);
+        $this->assertCount(33, $allValues);
+        // Le builder doit couvrir les 33 evenements backend.
+        $this->assertCount(33, WebhookEvent::cases());
         $this->assertContains('invoice.validated', $allValues);
         $this->assertContains('invoice.incoming.received', $allValues);
+        $this->assertContains('invoice.incoming.validated', $allValues);
         $this->assertContains('invoice.incoming.paid', $allValues);
         $this->assertContains('signature.completed', $allValues);
+        $this->assertContains('onboarding.completed', $allValues);
+        $this->assertContains('recurring_invoice.emitted', $allValues);
+        $this->assertContains('subtenant.threshold.warning', $allValues);
+    }
+
+    #[Test]
+    public function it_resolves_domain_for_all_new_events(): void
+    {
+        // Chaque case doit avoir un domaine resolvable (sinon UnhandledMatchError).
+        foreach (WebhookEvent::cases() as $event) {
+            $this->assertNotEmpty($event->domain());
+            $this->assertNotEmpty($event->label());
+        }
+
+        $this->assertEquals('onboarding', WebhookEvent::OnboardingStarted->domain());
+        $this->assertEquals('recurring_invoice', WebhookEvent::RecurringInvoiceEmitted->domain());
+        $this->assertEquals('subtenant', WebhookEvent::SubtenantThresholdWarning->domain());
     }
 
     #[Test]

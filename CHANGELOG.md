@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.1] - 2026-06-15
+
+### Fixed — Synchronisation de l'enum `WebhookEvent` sur les 33 événements backend
+
+- `WebhookEvent` couvre désormais les **33 événements** exposés par le backend
+  (`Webhook::EVENTS`). Ajout de 13 cases manquants :
+  - `invoice.incoming.validated` (`InvoiceIncomingValidated`)
+  - `onboarding.started`, `onboarding.step_completed`, `onboarding.completed`,
+    `onboarding.failed`
+  - `recurring_invoice.upcoming`, `recurring_invoice.emitted`,
+    `recurring_invoice.completed`, `recurring_invoice.failed`
+  - `subtenant.threshold.warning`, `subtenant.threshold.vat_base_exceeded`,
+    `subtenant.threshold.vat_majored_exceeded`, `subtenant.threshold.micro_exceeded`
+- `WebhookEvent::domain()` reconnaît les nouveaux domaines `onboarding`,
+  `recurring_invoice` et `subtenant`.
+- `WebhookBuilder` : nouveaux helpers de famille cohérents avec l'existant —
+  `onAllIncomingInvoiceEvents()`, `onAllOnboardingEvents()`,
+  `onAllRecurringInvoiceEvents()`, `onAllThresholdEvents()`. `onAllEvents()`
+  couvre bien les 33 événements (`WebhookEvent::cases()`).
+
 ## [3.5.0] - 2026-06-15
 
 ### Added — Comblement de gaps de couverture REST

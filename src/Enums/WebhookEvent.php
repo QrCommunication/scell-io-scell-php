@@ -19,6 +19,7 @@ enum WebhookEvent: string
 
     // Evenements factures entrantes
     case InvoiceIncomingReceived = 'invoice.incoming.received';
+    case InvoiceIncomingValidated = 'invoice.incoming.validated';
     case InvoiceIncomingAccepted = 'invoice.incoming.accepted';
     case InvoiceIncomingRejected = 'invoice.incoming.rejected';
     case InvoiceIncomingDisputed = 'invoice.incoming.disputed';
@@ -37,6 +38,24 @@ enum WebhookEvent: string
     case BalanceLow = 'balance.low';
     case BalanceCritical = 'balance.critical';
 
+    // Evenements onboarding
+    case OnboardingStarted = 'onboarding.started';
+    case OnboardingStepCompleted = 'onboarding.step_completed';
+    case OnboardingCompleted = 'onboarding.completed';
+    case OnboardingFailed = 'onboarding.failed';
+
+    // Evenements factures recurrentes
+    case RecurringInvoiceUpcoming = 'recurring_invoice.upcoming';
+    case RecurringInvoiceEmitted = 'recurring_invoice.emitted';
+    case RecurringInvoiceCompleted = 'recurring_invoice.completed';
+    case RecurringInvoiceFailed = 'recurring_invoice.failed';
+
+    // Evenements seuils sous-tenant
+    case SubtenantThresholdWarning = 'subtenant.threshold.warning';
+    case SubtenantThresholdVatBaseExceeded = 'subtenant.threshold.vat_base_exceeded';
+    case SubtenantThresholdVatMajoredExceeded = 'subtenant.threshold.vat_majored_exceeded';
+    case SubtenantThresholdMicroExceeded = 'subtenant.threshold.micro_exceeded';
+
     /**
      * Retourne le libelle en francais.
      */
@@ -50,6 +69,7 @@ enum WebhookEvent: string
             self::InvoiceRejected => 'Facture refusee',
             self::InvoiceError => 'Erreur facture',
             self::InvoiceIncomingReceived => 'Facture entrante recue',
+            self::InvoiceIncomingValidated => 'Facture entrante validee',
             self::InvoiceIncomingAccepted => 'Facture entrante acceptee',
             self::InvoiceIncomingRejected => 'Facture entrante rejetee',
             self::InvoiceIncomingDisputed => 'Facture entrante contestee',
@@ -63,6 +83,18 @@ enum WebhookEvent: string
             self::SignatureError => 'Erreur signature',
             self::BalanceLow => 'Solde bas',
             self::BalanceCritical => 'Solde critique',
+            self::OnboardingStarted => 'Onboarding demarre',
+            self::OnboardingStepCompleted => 'Etape d\'onboarding terminee',
+            self::OnboardingCompleted => 'Onboarding termine',
+            self::OnboardingFailed => 'Echec de l\'onboarding',
+            self::RecurringInvoiceUpcoming => 'Facture recurrente a venir',
+            self::RecurringInvoiceEmitted => 'Facture recurrente emise',
+            self::RecurringInvoiceCompleted => 'Facture recurrente terminee',
+            self::RecurringInvoiceFailed => 'Echec de la facture recurrente',
+            self::SubtenantThresholdWarning => 'Seuil sous-tenant : alerte',
+            self::SubtenantThresholdVatBaseExceeded => 'Seuil sous-tenant : franchise TVA depassee',
+            self::SubtenantThresholdVatMajoredExceeded => 'Seuil sous-tenant : franchise TVA majoree depassee',
+            self::SubtenantThresholdMicroExceeded => 'Seuil sous-tenant : plafond micro depasse',
         };
     }
 
@@ -75,6 +107,9 @@ enum WebhookEvent: string
             str_starts_with($this->value, 'invoice.') => 'invoice',
             str_starts_with($this->value, 'signature.') => 'signature',
             str_starts_with($this->value, 'balance.') => 'balance',
+            str_starts_with($this->value, 'onboarding.') => 'onboarding',
+            str_starts_with($this->value, 'recurring_invoice.') => 'recurring_invoice',
+            str_starts_with($this->value, 'subtenant.') => 'subtenant',
         };
     }
 

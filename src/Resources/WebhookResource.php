@@ -213,6 +213,19 @@ class WebhookBuilder
     }
 
     /**
+     * Ecoute tous les evenements de factures entrantes.
+     */
+    public function onAllIncomingInvoiceEvents(): self
+    {
+        foreach (WebhookEvent::cases() as $event) {
+            if (str_starts_with($event->value, 'invoice.incoming.')) {
+                $this->events[] = $event;
+            }
+        }
+        return $this;
+    }
+
+    /**
      * Ecoute tous les evenements de signature.
      */
     public function onAllSignatureEvents(): self
@@ -229,6 +242,39 @@ class WebhookBuilder
     public function onBalanceEvents(): self
     {
         foreach (WebhookEvent::forDomain('balance') as $event) {
+            $this->events[] = $event;
+        }
+        return $this;
+    }
+
+    /**
+     * Ecoute tous les evenements d'onboarding.
+     */
+    public function onAllOnboardingEvents(): self
+    {
+        foreach (WebhookEvent::forDomain('onboarding') as $event) {
+            $this->events[] = $event;
+        }
+        return $this;
+    }
+
+    /**
+     * Ecoute tous les evenements de factures recurrentes.
+     */
+    public function onAllRecurringInvoiceEvents(): self
+    {
+        foreach (WebhookEvent::forDomain('recurring_invoice') as $event) {
+            $this->events[] = $event;
+        }
+        return $this;
+    }
+
+    /**
+     * Ecoute tous les evenements de seuils sous-tenant.
+     */
+    public function onAllThresholdEvents(): self
+    {
+        foreach (WebhookEvent::forDomain('subtenant') as $event) {
             $this->events[] = $event;
         }
         return $this;
