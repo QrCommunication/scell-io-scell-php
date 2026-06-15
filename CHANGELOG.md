@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.5.0] - 2026-06-15
+
+### Added — Comblement de gaps de couverture REST
+
+- `invoiceTemplates()->deriveColorsFromInvoiceLogo(): array` — déduit la
+  palette `primary_color`/`accent_color` depuis le logo de FACTURE du modèle
+  par défaut du tenant et la retourne SANS persister (jumeau live de
+  `deriveColorsFromEmailLogo()`, qui lui applique la palette).
+  `POST /invoice-templates/derive-colors-from-invoice-logo`. 404 si pas de
+  logo de facture, 422 si couleurs trop neutres.
+- `invoiceTemplates()->preview(array $params = []): string` — aperçu d'une
+  facture-échantillon rendue avec un branding donné (overrides non persistés :
+  couleurs, logo, textes). Retourne le contenu brut HTML (`text/html`, défaut)
+  ou PDF binaire (`format: 'pdf'`). `GET /invoice-templates/preview`.
+- `invoices()->depositGroups(array $filters = []): array` — liste les groupes
+  d'acomptes (deals multi-factures) avec agrégats (total deal, somme acomptes,
+  reste à facturer, nb factures, présence d'une facture de solde). Filtre
+  `has_no_balance`. `GET /invoices/deposit-groups`.
+- `invoices()->depositGroup(string $groupId): array` — détail de progression
+  d'un groupe d'acomptes (scope tenant strict, anti-IDOR : 404 hors scope).
+  `GET /invoices/deposit-groups/{groupId}`.
+- Nouvelle ressource `invoiceMentions()` (exposée sur `ScellClient` et
+  `ScellApiClient`) :
+  - `assistant(array $params): array` — propose les textes de mentions légales
+    de facture par champ. `POST /invoice-mentions/assistant`.
+  - `preview(array $params): array` — aperçu temps réel des mentions composées
+    par le résolveur serveur en surchargeant (sans persister) la Company
+    émettrice. `POST /invoice-mentions/preview`.
+
+### Fixed
+
+- `HttpClient::SDK_VERSION` aligné sur la version réelle du SDK
+  (`3.4.0`/`3.4.1` → `3.5.0`) — utilisé dans l'en-tête `User-Agent`.
+
 ## [3.4.1] - 2026-06-11
 
 ### Fixed

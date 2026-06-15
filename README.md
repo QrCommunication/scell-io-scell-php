@@ -970,6 +970,21 @@ $html = $api->branding()->previewTenant([
 $tpl = $api->invoiceTemplates()->deriveColorsFromEmailLogo();
 echo "{$tpl->primaryColor} / {$tpl->accentColor}";
 
+// Deriver la palette depuis le logo de FACTURE SANS persister (v3.5.0)
+$palette = $api->invoiceTemplates()->deriveColorsFromInvoiceLogo();
+echo "{$palette['primary_color']} / {$palette['accent_color']}";
+
+// Apercu d'une facture-echantillon avec overrides de branding non persistes (v3.5.0)
+$html = $api->invoiceTemplates()->preview(['primary_color' => '#0066FF']); // 'pdf' => binaire
+
+// Groupes d'acomptes (deals multi-factures) (v3.5.0)
+$groups = $api->invoices()->depositGroups(['has_no_balance' => true]);
+$detail = $api->invoices()->depositGroup($groups[0]['id']); // 404 hors scope (anti-IDOR)
+
+// Assistant de mentions legales de facture (v3.5.0)
+$suggested = $api->invoiceMentions()->assistant(['vat_profile' => 'franchise_base']);
+$preview   = $api->invoiceMentions()->preview(['company' => ['name' => 'ACME']]);
+
 // Apercu HTML non persiste d'un document en cours de saisie (v3.4.0)
 // Rendu avec le vrai template + branding + mentions de la Company emettrice
 $html = $api->documents()->preview([
@@ -1141,7 +1156,7 @@ composer check
 
 | Resource | Description |
 |----------|-------------|
-| `invoices()` | Gestion des factures electroniques |
+| `invoices()` | Gestion des factures electroniques (+ depositGroups()/depositGroup() pour les deals multi-factures, v3.5.0) |
 | `signatures()` | Gestion des signatures electroniques |
 | `companies()` | Gestion des entreprises |
 | `products()` | Catalogue produits/services (CRUD, scope tenant + sub_tenant) |
@@ -1150,13 +1165,14 @@ composer check
 | `webhooks()` | Gestion des webhooks |
 | `branding()` | Configuration marque tenant (logo, couleur, textes emails, upload direct, apercu avec overrides) |
 | `documents()` | Apercu HTML non persiste d'un document en cours de saisie |
-| `invoiceTemplates()` | Templates de personnalisation factures/avoirs (CRUD, default, logo, derive-colors) |
+| `invoiceTemplates()` | Templates de personnalisation factures/avoirs (CRUD, default, logo, derive-colors email + facture, preview, v3.5.0) |
+| `invoiceMentions()` | Assistant de mentions legales de facture : assistant() + preview() (v3.5.0) |
 
 ### ScellApiClient (API Key)
 
 | Resource | Description |
 |----------|-------------|
-| `invoices()` | Factures (builder, download, audit trail, sendByEmail) |
+| `invoices()` | Factures (builder, download, audit trail, sendByEmail, depositGroups()/depositGroup() v3.5.0) |
 | `signatures()` | Signatures (builder, download, audit trail) |
 | `subTenants()` | Gestion des sub-tenants (CRUD, recherche) |
 | `tenantInvoices()` | Factures des sub-tenants (create, submit, update) |
@@ -1171,7 +1187,8 @@ composer check
 | `productCategories()` | Categories du catalogue produits (CRUD) |
 | `branding()` | Configuration marque tenant + sub-tenant (logo, couleur, emails, upload direct, apercu avec overrides) |
 | `documents()` | Apercu HTML non persiste d'un document en cours de saisie |
-| `invoiceTemplates()` | Templates de personnalisation factures/avoirs (CRUD, default, logo, derive-colors) |
+| `invoiceTemplates()` | Templates de personnalisation factures/avoirs (CRUD, default, logo, derive-colors email + facture, preview, v3.5.0) |
+| `invoiceMentions()` | Assistant de mentions legales de facture : assistant() + preview() (v3.5.0) |
 
 ### ScellTenantClient (Multi-Tenant Partner)
 

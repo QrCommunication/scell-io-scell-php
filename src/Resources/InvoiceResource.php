@@ -357,6 +357,68 @@ class InvoiceResource
     }
 
     /**
+     * Liste les groupes d'acomptes (deals commerciaux multi-factures).
+     *
+     * Chaque groupe agrege les factures d'acompte/solde partageant un meme
+     * `deposit_group_id` : montant total du deal, somme des acomptes emis,
+     * reste a facturer, nombre de factures, presence d'une facture de solde.
+     *
+     * @param array{has_no_balance?: bool} $filters
+     *        `has_no_balance` : ne retourner que les groupes sans facture de
+     *        solde (deals encore ouverts).
+     * @return array<int, array{
+     *     deposit_group_id: string,
+     *     first_invoice_number: string|null,
+     *     deposit_reference_text: string|null,
+     *     deposit_total_ht: float|string|null,
+     *     sum_deposits_ht: float|string|null,
+     *     remaining_ht: float|string|null,
+     *     invoices_count: int,
+     *     has_balance: bool
+     * }> Liste des groupes d'acomptes
+     *
+     * @since 3.5.0
+     */
+    public function depositGroups(array $filters = []): array
+    {
+        $query = [];
+        if (array_key_exists('has_no_balance', $filters)) {
+            $query['has_no_balance'] = $filters['has_no_balance'] ? '1' : '0';
+        }
+
+        $response = $this->http->get('invoices/deposit-groups', $query);
+
+        /** @var array<int, array<string, mixed>> $data */
+        $data = $response['data'] ?? [];
+
+        return $data;
+    }
+
+    /**
+     * Detail de progression d'un groupe d'acomptes.
+     *
+     * Retourne l'avancement du deal : total du deal, acomptes deja emis,
+     * reste a facturer, et la liste des factures du groupe. Scope strict par
+     * tenant (anti-IDOR) : 404 si le groupe n'appartient pas au tenant courant.
+     *
+     * @param string $groupId UUID du groupe d'acomptes
+     * @return array<string, mixed> Detail de progression du groupe
+     *
+     * @throws \Scell\Sdk\Exceptions\ScellException 404 si le groupe est introuvable / hors scope
+     *
+     * @since 3.5.0
+     */
+    public function depositGroup(string $groupId): array
+    {
+        $response = $this->http->get("invoices/deposit-groups/{$groupId}");
+
+        /** @var array<string, mixed> $data */
+        $data = $response['data'] ?? [];
+
+        return $data;
+    }
+
+    /**
      * Normalise les filtres de liste.
      */
     private function normalizeFilters(array $filters): array

@@ -11,6 +11,7 @@ use Scell\Sdk\Resources\BuyerResource;
 use Scell\Sdk\Resources\CompanyResource;
 use Scell\Sdk\Resources\CreditPacksResource;
 use Scell\Sdk\Resources\DocumentResource;
+use Scell\Sdk\Resources\InvoiceMentionsResource;
 use Scell\Sdk\Resources\InvoiceResource;
 use Scell\Sdk\Resources\InvoiceTemplateResource;
 use Scell\Sdk\Resources\ProductCategoryResource;
@@ -71,6 +72,7 @@ class ScellClient
     private ?BrandingResource $branding = null;
     private ?DocumentResource $documents = null;
     private ?InvoiceTemplateResource $invoiceTemplates = null;
+    private ?InvoiceMentionsResource $invoiceMentions = null;
     private ?CreditPacksResource $creditPacks = null;
     private ?ReferenceResource $reference = null;
     private ?RecurringInvoiceResource $recurringInvoices = null;
@@ -261,6 +263,18 @@ class ScellClient
     public function invoiceTemplates(): InvoiceTemplateResource
     {
         return $this->invoiceTemplates ??= new InvoiceTemplateResource($this->http);
+    }
+
+    /**
+     * Resource pour l'assistant de mentions legales de facture (scope tenant) :
+     * `assistant()` propose les textes par champ, `preview()` compose un apercu
+     * temps reel sans persister.
+     *
+     * @since 3.5.0
+     */
+    public function invoiceMentions(): InvoiceMentionsResource
+    {
+        return $this->invoiceMentions ??= new InvoiceMentionsResource($this->http);
     }
 
     /**
