@@ -27,7 +27,7 @@ jobs:
   # ---------------------------------------------------------------------------
   test:
     name: Pre-release Tests
-    runs-on: [self-hosted, linux, x64, hetzner, qrcom]
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: true
@@ -85,7 +85,7 @@ jobs:
   # ---------------------------------------------------------------------------
   release:
     name: Create GitHub Release
-    runs-on: [self-hosted, linux, x64, hetzner, qrcom]
+    runs-on: ubuntu-24.04
     needs: test
 
     steps:

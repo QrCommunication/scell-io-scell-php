@@ -23,7 +23,7 @@ jobs:
   # ---------------------------------------------------------------------------
   phpunit:
     name: PHPUnit (PHP ${{ matrix.php }})
-    runs-on: [self-hosted, linux, x64, hetzner, qrcom]
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -82,7 +82,7 @@ jobs:
   # ---------------------------------------------------------------------------
   phpstan:
     name: PHPStan (PHP ${{ matrix.php }})
-    runs-on: [self-hosted, linux, x64, hetzner, qrcom]
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -126,7 +126,7 @@ jobs:
   # ---------------------------------------------------------------------------
   validate:
     name: Validate composer.json
-    runs-on: [self-hosted, linux, x64, hetzner, qrcom]
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout code
