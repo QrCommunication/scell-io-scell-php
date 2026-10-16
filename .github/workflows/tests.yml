@@ -2,7 +2,7 @@
 # Scell.io PHP SDK - Tests Workflow
 # =============================================================================
 # Ce workflow execute les tests PHPUnit et l'analyse statique PHPStan
-# sur les versions PHP 8.2 et 8.3 pour chaque push et pull request.
+# sur les versions PHP 8.2, 8.3, 8.4 et 8.5 pour chaque push et pull request.
 # =============================================================================
 
 name: Tests
@@ -28,14 +28,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3']
+        php: ['8.2', '8.3', '8.4', '8.5']
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: mbstring, json, curl, xml
@@ -44,10 +44,10 @@ jobs:
 
       - name: Get Composer cache directory
         id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.lock', '**/composer.json') }}
@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload coverage artifacts
         if: matrix.php == '8.3'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: coverage-report
           path: coverage/
@@ -87,14 +87,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3']
+        php: ['8.2', '8.3', '8.4', '8.5']
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: mbstring, json, curl, xml
@@ -102,10 +102,10 @@ jobs:
 
       - name: Get Composer cache directory
         id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.lock', '**/composer.json') }}
@@ -130,16 +130,23 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@2.40.0
         with:
-          php-version: '8.3'
+          php-version: '8.5'
+          extensions: mbstring, json, curl, xml
+          coverage: none
           tools: composer:v2
 
       - name: Validate composer.json
         run: composer validate --strict
+
+      # Library: no committed lockfile. Resolve on the actual PHP runtime
+      # before auditing the installed graph, including development dependencies.
+      - name: Install dependencies for security audit
+        run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Check for security vulnerabilities
         run: composer audit

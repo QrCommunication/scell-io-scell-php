@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [3.5.2] - 2026-10-16
+
 ### Changed
 
 - Dependances : `guzzlehttp/guzzle` elargi a `^7.0 || ^8.0` (teste sur 8.2),
@@ -15,6 +17,10 @@ All notable changes to this project will be documented in this file.
 - Suggestion Laravel : `illuminate/support ^11.0 || ^12.0 || ^13.0`.
 - `phpunit.xml` : `executionOrder="defects"` + `resolveDependencies="true"` (le mode `depends`
   de `executionOrder` est deprecie en PHPUnit 13).
+- CI et prerelease : matrices PHPUnit/PHPStan et controles avant publication sur PHP
+  8.2, 8.3, 8.4 et 8.5 ; resolution Composer propre a chaque runtime. Les actions
+  checkout, cache, setup-php, upload-artifact et action-gh-release sont actualisees
+  aux dernieres versions stables verifiees.
 
 ### Fixed
 
@@ -22,6 +28,10 @@ All notable changes to this project will be documented in this file.
   au lieu de `ConnectException`. Avec Guzzle 8, les timeouts reseau (`NetworkTimeoutException`)
   ne sont plus des `ConnectException` et n'etaient plus retentes. Tests ajoutes
   (`RetryMiddlewareTest`).
+- Workflows : installation des dependances avant `composer audit`, y compris les
+  dependances de developpement ; suppression de la desactivation du blocage des
+  avis de securite dans le workflow de publication. La creation de release reste
+  conditionnee a la reussite des controles prerelease.
 
 ## [3.5.1] - 2026-06-15
 

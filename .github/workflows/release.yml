@@ -32,14 +32,14 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        php: ['8.2', '8.3']
+        php: ['8.2', '8.3', '8.4', '8.5']
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Setup PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@2.40.0
         with:
           php-version: ${{ matrix.php }}
           extensions: mbstring, json, curl, xml
@@ -48,10 +48,10 @@ jobs:
 
       - name: Get Composer cache directory
         id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
 
       - name: Cache Composer dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('**/composer.lock', '**/composer.json') }}
@@ -60,14 +60,10 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install dependencies
-        # Désactive le blocage advisory du resolver Composer 2.8+ : les dev-deps
-        # de test (orchestra/testbench -> laravel/framework) peuvent être affectées
-        # par des advisories downstream sans que cela doive bloquer la release de
-        # cette librairie (qui n'embarque pas Laravel). `|| true` : no-op si le
-        # Composer du runner ne connaît pas encore la clé.
-        run: |
-          composer config --no-plugins policy.advisories.block false || true
-          composer install --prefer-dist --no-progress --no-interaction
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Check for security vulnerabilities
+        run: composer audit
 
       - name: Validate composer.json
         run: composer validate --strict
@@ -90,7 +86,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -128,7 +124,7 @@ jobs:
           echo "Changelog extracted successfully"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3.0.3
         with:
           name: Scell.io PHP SDK v${{ steps.version.outputs.version }}
           body_path: release_notes.md
@@ -143,12 +139,14 @@ jobs:
           RELEASE_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
-          echo "## Release Created Successfully!" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Version:** $RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Tag:** $RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "### Next Steps" >> "$GITHUB_STEP_SUMMARY"
-          echo "- La release GitHub a ete creee automatiquement" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Packagist sera notifie via le webhook configure" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Verifiez la mise a jour sur https://packagist.org/packages/scell/sdk" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Release Created Successfully!"
+            echo ""
+            echo "**Version:** $RELEASE_VERSION"
+            echo "**Tag:** $RELEASE_TAG"
+            echo ""
+            echo "### Next Steps"
+            echo "- La release GitHub a ete creee automatiquement"
+            echo "- Packagist sera notifie via le webhook configure"
+            echo "- Verifiez la mise a jour sur https://packagist.org/packages/scell/sdk"
+          } >> "$GITHUB_STEP_SUMMARY"
