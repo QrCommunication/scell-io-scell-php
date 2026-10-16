@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Dependances : `guzzlehttp/guzzle` elargi a `^7.0 || ^8.0` (teste sur 8.2),
+  `phpunit/phpunit` a `^11.0 || ^12.0 || ^13.0`, `orchestra/testbench` a
+  `^9.0 || ^10.0 || ^11.0` (teste sur Laravel 13). Le `^9.0` seul (Laravel 11) etait
+  bloque par les advisories de securite : `composer install` echouait sur un clone propre.
+  La contrainte `php ^8.2` est inchangee.
+- `psr/http-client ^1.0` est desormais declare explicitement (utilise par `RetryMiddleware`).
+- Suggestion Laravel : `illuminate/support ^11.0 || ^12.0 || ^13.0`.
+- `phpunit.xml` : `executionOrder="defects"` + `resolveDependencies="true"` (le mode `depends`
+  de `executionOrder` est deprecie en PHPUnit 13).
+
+### Fixed
+
+- `RetryMiddleware` : le retry sur erreur reseau teste `Psr\Http\Client\NetworkExceptionInterface`
+  au lieu de `ConnectException`. Avec Guzzle 8, les timeouts reseau (`NetworkTimeoutException`)
+  ne sont plus des `ConnectException` et n'etaient plus retentes. Tests ajoutes
+  (`RetryMiddlewareTest`).
+
 ## [3.5.1] - 2026-06-15
 
 ### Fixed — Synchronisation de l'enum `WebhookEvent` sur les 33 événements backend

@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Scell\Sdk\Http;
 
-use GuzzleHttp\Exception\ConnectException;
-use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use Psr\Http\Client\NetworkExceptionInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -59,8 +58,10 @@ class RetryMiddleware
                 return false;
             }
 
-            // Retenter sur les erreurs de connexion
-            if ($exception instanceof ConnectException) {
+            // Retenter sur les erreurs reseau sans reponse (connexion, timeout).
+            // NetworkExceptionInterface (PSR-18) couvre Guzzle 7 (ConnectException) et
+            // Guzzle 8 (NetworkException, dont les timeouts ne sont plus des ConnectException).
+            if ($exception instanceof NetworkExceptionInterface) {
                 return true;
             }
 
